@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation.Language;
 using System.Reflection;
-using log4net;
-using log4net.Appender;
-using log4net.Config;
+#if DEBUG
+ using log4net;
+ using log4net.Appender;
+ using log4net.Config;
+#endif
 
 namespace PSADigraph
 {
@@ -14,8 +16,8 @@ namespace PSADigraph
     public static class Constants
     {
         public const string DigraphEdgeAlreadyExists = "Edge from {0}  to {1} already exists.";
-        public const string DigraphVertexAlreadyExists = "Vertex { 0} already exists! Cannot add it to the digraph.";
-        public const string DigraphVertexDoesNotExists = "Vertex { 0} does not exist in the digraph.";
+        public const string DigraphVertexAlreadyExists = "Vertex {0} already exists! Cannot add it to the digraph.";
+        public const string DigraphVertexDoesNotExists = "Vertex {0} does not exist in the digraph.";
     }
 
     //from PSScriptAnalyzer-master.1.18.0\Engine\Helper.cs
@@ -415,7 +417,7 @@ namespace PSADigraph
                     containsVertex = true;
 #if DEBUG
                     if (vertex.Ast != null)
-                      AppLogger.DebugFormat("AddVertex {0}",vertex.Name);
+                        AppLogger.DebugFormat("AddVertex Name {0} Type {1}", vertex.Name, vertex.Ast.GetType().FullName);
 #endif
                     if (vertex.Ast != null
                         && vertex.Ast is FunctionDefinitionAst)
@@ -480,16 +482,13 @@ namespace PSADigraph
             if (cmdName == null)
             {
 #if DEBUG
-                AppLogger.DebugFormat("VisitCommand GetCommandName {0} null",cmdName );
+                AppLogger.DebugFormat("VisitCommand GetCommandName {0} null",ast.ToString());
 #endif
                 return AstVisitAction.Continue;
             }
 
             var vertex = new Vertex(cmdName, ast);
             AddVertex(vertex);
-#if DEBUG
-            AppLogger.DebugFormat("VisitCommand {0} Before IsWithinFunctionDefinition", cmdName);
-#endif
             if (IsWithinFunctionDefinition())
             {
 #if DEBUG
@@ -516,7 +515,7 @@ namespace PSADigraph
             if (memberExprAst == null)
             {
 #if DEBUG
-                AppLogger.DebugFormat("VisitInvokeMemberExpression {0} not StringConstantExpressionAst", ast);
+                AppLogger.DebugFormat("VisitInvokeMemberExpression {0} not StringConstantExpressionAst", ast.ToString());
 #endif
                 return AstVisitAction.Continue;
             }
@@ -525,7 +524,7 @@ namespace PSADigraph
             if (string.IsNullOrWhiteSpace(member))
             {
 #if DEBUG
-                AppLogger.DebugFormat("VisitInvokeMemberExpression {0} memberExprAst isnull or empty", ast);
+                AppLogger.DebugFormat("VisitInvokeMemberExpression {0} memberExprAst isnull or empty", ast.ToString());
 #endif
                 return AstVisitAction.Continue;
             }
