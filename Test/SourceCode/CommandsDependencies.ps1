@@ -5,11 +5,15 @@
 #v5
 #Resources used by the using statement must exist
 using assembly System.Windows.Forms
-using namespace System.Windows.Forms
+using assembly 'System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089' 
+using assembly 'C:\WINDOWS\Microsoft.Net\assembly\GAC_MSIL\System.Windows.Forms\v4.0_4.0.0.0__b77a5c561934e089\System.Windows.Forms.dll'
 
-Using module Pester
-Using module @{ ModuleName="Pester"; ModuleVersion="4.7.3" }
-Using module 'C:\Program Files\WindowsPowerShell\Modules\Pester\4.7.3\Pester.psd1'
+using namespace System.Windows.Forms
+using namespace ServiceProcess
+
+# Using Module Pester
+# Using module @{ ModuleName="Pester"; ModuleVersion="4.7.3" }
+# Using module 'C:\Program Files\WindowsPowerShell\Modules\Pester\4.7.3\Pester.psd1'
 
 Import-module c:\temp\modules\my.dll
 Import-module c:\temp\my.ps1
@@ -23,6 +27,7 @@ import-module PSake,Pester
 import-module C:\temp\Modules\PSake.psd1
 import-module C:\temp\Modules\Pester.psm1
 import-module -Name C:\temp\Modules\Pester.psm1
+import-module C:\temp\Modules\PSake.psd1,C:\temp\Modules\Pester.psm1
 
 IPMO @{ ModuleName="AzureRM.Netcore"; ModuleVersion="0.12.0" }
 IPMO @{ ModuleName = 'Computer' ;ModuleVersion = '1.0'; GUID = 'a5d7c151-56cf-40a4-839f-0019898eb324'}
@@ -72,8 +77,9 @@ Add-Type -path C:\temp\MyAssembly.dll
 Add-Type -LiteralPath C:\temp[0]\MyAssembly.dll
 Add-Type -AssemblyName "System.Windows.Forms"
 Add-Type -AssemblyName "Accessibility"
-Add-Type -TypeDefintion $Source -Language CSharp -Verbose -PassThru -ReferencedAssemblies $requiredAssembly
-Add-Type -TypeDefintion $Source -Language CSharp -Verbose -PassThru -ReferencedAssemblies 'C:\temp[0]\MyAssembly.dll'
+Add-Type -TypeDefinition $source -Language CSharp -Verbose -PassThru -ReferencedAssemblies $requiredAssembly
+Add-Type -TypeDefinition $source -Language CSharp -Verbose -PassThru -ReferencedAssemblies 'C:\temp[0]\MyAssembly.dll'
+
 
 [System.Reflection.Assembly]::LoadFrom("c:\path\file.dll")
 [System.Reflection.Assembly]::LoadFrom($dllpath)
@@ -85,7 +91,7 @@ $assembly = [Reflection.Assembly]::LoadFile($dllpath)
 [System.Reflection.Assembly]::UnsafeLoadFrom($Dllpath)
 
  #Deprecated
-[void][reflection.assembly]::Load('System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089')
+[reflection.assembly]::Load('System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089')
  #Deprecated
 [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.Smo")
 
