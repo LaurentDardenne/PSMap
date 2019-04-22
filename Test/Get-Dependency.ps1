@@ -1,5 +1,9 @@
-#Todo les object renvoyés doivent avoir un champ commun : PropertyNameOfTheKey
-#au lieu de mémoriser un type, mémoriser l'AST ?
+# Add-Type -AssemblyName System.ComponentModel.DataAnnotations
+# [System.ComponentModel.DataAnnotations.KeyAttribute]
+#todo 'identité composite',Unicité ?
+#                             Module Name Or Module,Version,Guid
+#                             ModulePath\V1\Name; ModulePath\V2\Name
+
 Function Get-StaticParameterBinder{
  param(
     [System.Management.Automation.Language.CommandAst] $Command,
@@ -12,6 +16,8 @@ Function Get-StaticParameterBinder{
   {
      [pscustomobject]@{
         PSTypeName='ModuleStaticParameterBinder';
+        PSMapKeys='Name'
+        Ast=$Command
         Name = $binding.BoundParameters['Name'].ConstantValue
         FullyQualifiedName = $binding.BoundParameters['FullyQualifiedName'].Value
      }
@@ -24,7 +30,9 @@ Function Get-StaticParameterBinder{
      { $Path=$binding.BoundParameters['FilePath'].Value }#Todo can contains variables
      [pscustomobject]@{
         PSTypeName='ProcessStaticParameterBinder';
-        FilePath= $path
+        PSMapKeys='FilePath'
+        Ast=$Command
+        FilePath= $Path
         ArgumentList= $binding.BoundParameters['ArgumentList'].ConstantValue
      }
   }
@@ -32,11 +40,13 @@ Function Get-StaticParameterBinder{
   {
      [pscustomobject]@{
         PSTypeName='AddTypeStaticParameterBinder'
+        PSMapKeys='Path|LiteralPath|AssemblyName'
+        Ast=$Command
         Path= $binding.BoundParameters['Path'].ConstantValue
         LiteralPath= $binding.BoundParameters['LiteralPath'].ConstantValue
-        #from Gac
+         #from Gac
         AssemblyName= $binding.BoundParameters['AssemblyName'].ConstantValue
-        #CodeDom dependencies
+         #CodeDom dependencies
         ReferencedAssemblies= $binding.BoundParameters['ReferencedAssemblies'].ConstantValue
      }
   }
@@ -65,15 +75,6 @@ function Get-UsingStatementParameter{
         'Type' { Write-Error 'Not implemented in 5.1 or 6.2' }
    }
 }
-function New-InformationModule{
-    param(
-       $ModuleName,
-       $ModuleVersion=$null,
-       $GUID=$null
-    )
-    return @{ ModuleName= $ModuleName; ModuleVersion= $ModuleVersion; GUID= $GUID}
-}
-
 function Get-InformationModule{
   param(
     [System.Management.Automation.Language.CommandAst] $Command
@@ -84,8 +85,9 @@ function Get-InformationModule{
     {
         'ArrayLiteralAst'      {
                                     #todo use case : import-module c:\temp\Fdeux.ps1,c:\temp\Fun.ps1
+                                    # import-module c:\temp\Fdeux.ps1,@{} ?
                                     Foreach ($Name in $Commandelement.Elements.value)
-                                    { New-InformationModuLe $Name }
+                                    { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Name) }
                                }
 
         'CommandParameterAst' {
@@ -94,23 +96,21 @@ function Get-InformationModule{
                                     {
                                         #todo use case: Import-module c:\temp\modules\my.dll
                                         #todo use case: Import-module c:\temp\my.ps1
-                                        New-InformationModule -ModuleName $Parameters.Name
+                                        [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Parameters.Name)
                                     }
                                     if( $Null -ne $StaticParameters.FullyQualifiedName)
                                     {
-                                        $Parameters=$StaticParameters.FullyQualifiedName.KeyValuePairs
-                                        New-InformationModule @Parameters
+                                       [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs
                                     }
                                 }
 
         'HashtableAst'      {
-                                   $Parameters=$CommandElement.KeyValuePairs
-                                   New-InformationModule @Parameters
+                               [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.KeyValuePairs)
                             }
 
-        'StringConstantExpressionAst' { New-InformationModule -ModuleName $CommandElement.Value }
+        'StringConstantExpressionAst' { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) }
             
-         default { Write-error "Get-InformationModuLe: ce type n'est pas géré: $($TypeName)"}
+         default { Write-error "Get-InformationModule: the recognition of this type is not available: $($TypeName)"}
     }
 }
 
@@ -149,21 +149,48 @@ function Get-InformationDLL{
   $Parameters=Get-StaticParameterBinder $Command -AddType
 }
 
+function Get-AssemblyVersion{
+  param (
+    $Value
+  )
+   #Return the the contains of the attribut ;  [assembly: AssemblyVersion("1.0.0.0")]
+ try {
+   #First try to use a path
+  $AssemblyInfo=[System.Reflection.Assembly]::ReflectionOnlyLoadFrom($Value)
+  $AssemblyInfo.GetName().Version
+ } catch {
+    try {
+      #Next, try to use full assembly name
+      $AssemblyName=[System.Reflection.AssemblyName]$Value
+      $AssemblyName.Version
+    } catch {
+      return $null
+    }
+ }
+}
+
 Function New-NamespaceDependency{
+  [CmdletBinding(DefaultParameterSetName='Assembly')]
   param(
-     $Assembly, #todo exclusif
+      [Parameter(ParameterSetName='Assembly', Position=0)]
+     $Assembly,
+     
+      [Parameter(ParameterSetName='Using', Position=0)]
      $Using
   )
- if ($Using)
+ if ($PSCmdlet.ParameterSetName -eq 'Using')
  {
-    if ($Using.UsingStatementKind -eq 'Assemb|y')
+    if ($Using.UsingStatementKind -eq 'Assembly')
     {
-       $FileName=$Using.Name.Value
+       $Name=$Using.Name.Value
        return [pscustomobject]@{
                  PSTypeName='NamespaceDependency'
+                 PSMapKeys='Name'
+                 Ast=$Using
                  Name= $Using.Name.Extent
-                 Version= (get-item $FileName).Versioninfo.Productversion #todo false for Version=4.0.0.0
-                 File= $FileName
+                 #Version= (get-item $Name).Versioninfo.Fileversion
+                 Version=Get-AssemblyVersion $Name
+                 File= $Name
                  Type='UsingAssembly'
                }
     }
@@ -174,7 +201,7 @@ Function New-NamespaceDependency{
                  Name= $Using.Name.Value
                  Version= $null
                  File= $Null
-                Type='UsingNameSpace'
+                 Type='UsingNameSpace'
              }
     }
  }
@@ -209,16 +236,8 @@ $sbRead={
 
 .$sbRead
 
-foreach ($RequiredModule in $Ast.ScriptRequirements.RequiredModules)
-{
-    $Version=$null
-    if ($null -ne $RequiredModule.Version)
-    { $Version=$RequiredModule.Version }
-    elseif ($null -ne $RequiredModule.RequiredVersion)
-    { $Version=$RequiredModule.RequiredVersion }
-
-    New-InformationModule $RequiredModule.Name $Version $RequiredModule GUID
-}
+#Return Microsoft.PowerShell.Commands.ModuleSpecification
+$Ast.ScriptRequirements.RequiredModules
 
 $UsingStatements=$ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.UsingStatementAst] },$true)
 foreach ($UsingStatement in $UsingStatements)
@@ -272,6 +291,7 @@ foreach ($Current in $Expressions)
         {
             #TODO Load peut avoir des signatures ayant en 1er param un type différent de string
             #LoadWithPartialName
+            #la classe AssemblyName peut déterminer ces cas
             #todo si pas.dll alors c'est un nom court ('System.Windows.Forms')
             # ou un nom long 'System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5cS61934eO89'
             if ($Current.Arguments[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
@@ -302,10 +322,8 @@ foreach ($Current in $Expressions)
             else
             {
                 #TODO
-                #Pour les appels avec variable
-                #on peut vouloir les lister en tant qu'irréso|us
-                #--> créé un objet
-                Write-warning "$($current.Arguments[0].gettype().fullname)"
+                # unresolved (informations)
+                Write-warning "$($current.Arguments[0].GetType().FullName)"
              }
         }
     }
@@ -314,7 +332,3 @@ foreach ($Current in $Expressions)
       Write-Error "Foreach Expressions : unknown case : '$($Current)'"; Continue
     }
 }
-                        
-                        
-                        
-                        
