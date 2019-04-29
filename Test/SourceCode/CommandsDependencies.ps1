@@ -11,9 +11,9 @@ using assembly 'C:\WINDOWS\Microsoft.Net\assembly\GAC_MSIL\System.Windows.Forms\
 using namespace System.Windows.Forms
 using namespace ServiceProcess
 
-# Using Module Pester
-# Using module @{ ModuleName="Pester"; ModuleVersion="4.7.3" }
-# Using module 'C:\Program Files\WindowsPowerShell\Modules\Pester\4.7.3\Pester.psd1'
+Using module Pester
+Using module @{ ModuleName="Pester"; ModuleVersion="4.7.3" }
+Using module 'C:\Program Files\WindowsPowerShell\Modules\Pester\4.7.3\Pester.psd1'
 
 Import-module c:\temp\modules\my.dll
 Import-module c:\temp\my.ps1
@@ -39,6 +39,11 @@ IPMO C:\temp\Modules\PSake.psd1
 IPMO C:\temp\Modules\Pester.psm1
 IPMO -Name C:\temp\Modules\Pester.psm1
 
+$M=New-Module -NameDynamicModule -ScriptBlock { function Hello {"Hello!"} }
+$O=New-Module -ScriptBlock { function Hello {"Hello!"} } -AsCustomObject
+
+&'C:\temp\sp ace\test.ps1'
+
 . .\MonScriptDot.ps1
 & .\MonScriptAmperSand.ps1
 
@@ -57,6 +62,10 @@ IPMO -Name C:\temp\Modules\Pester.psm1
 . ..\MonScriptDot.ps1 -Verbose -Debug
 & ..\MonScriptAmperSand.ps1 -Verbose -Debug
 
+C:\temp\One.ps1
+One.ps1 #erreur mais possible
+
+
 Start-Process msiexec.exe -ArgumentList "/X {000000C57B8D-16EB-4FD4-959E-F868BF96E867} /qn /norestart" -wait
 Start-Process "$Path\Prg.exe" -ArgumentList " /p1=data_01 /Timeout=5 " 
 Start-Process ipconfig.exe /release -wait
@@ -71,6 +80,7 @@ saps ipconfig.exe /release -wait
 
 TASKKILL /F /IM Vscan.exe /T
 TASKKILL.exe /F /IM Vscan.exe /T
+C:\temp\code "Test" 
 
 
 Add-Type -path C:\temp\MyAssembly.dll
