@@ -121,19 +121,22 @@ function Get-InformationProgram{
    Get-StaticParameterBinder $Command -Process
 }
 function Get-InformationScript{
-    param(
-       [System.Management.Automation.Language.CommandAst] $Command
-    )
-    function New-InformationScript{
-      param(
-        $Name,
-        $InvocationOperator
-      )
-      return @{Name=$Name; InvocationOperator=$InvocationOperator}
-    }
-    #$Command.CommandElement.Count -eq 0 without parameter
-    #$Command.CommandElement.Count -gt 0 with parameters
-    New-InformationScript -Name $Command.CommandElements[0].Value -InvocationOperator $Command.InvocationOperator
+  param(
+     [System.Management.Automation.Language.CommandAst] $Command,
+      [System.IO.FileInfo]$FileInfo
+  )
+ function New-InformationScript{
+   param(
+      $FileName,
+      $InvocationOperator
+   )
+   return @{FileName=$FileName; InvocationOperator=$InvocationOperator}      
+}
+
+#$Command.CommandElement.Count -eq 0  without parameter
+#$Command.CommandElement.Count -gt 0  with parameters
+#New-InformationScript -Name $Command.CommandElements[0].Value -InvocationOperator $Command.InvocationOperator
+New-InformationScript -FileName $FileInfo.FullName -InvocationOperator $Command.InvocationOperator
 }
 
 function Get-InformationDLL{
@@ -254,8 +257,15 @@ foreach ($Command in $Commands)
         if ($CommandName -match 'Start-Process|saps|start')
         { Get-InformationProgram $Command ; Continue }
       
-        if ($CommandName -match '\.ps1$')
-        { Get-InformationScript $Command ; Continue }
+        try {
+          $FileName=[System.IO.FileInfo]$CommandName
+          if ($Filename.Extension -eq '.ps1')
+          { Get-InformationScript $Command $FileName ; Continue }
+          else
+          { Write-Warning "todo Programm ? '$CommandName'" }
+        } catch {
+           Write-Warning "Is not a file name '$CommandName'"
+        }
 
         if ($CommandName -match 'Add-Type')
         { Get-InformationDLL $Command ; Continue }
