@@ -1,4 +1,7 @@
-Import-Module PSAutograph,PSMap
+#todoSuppose Language mode: FullLanguage
+Import-Module PSAutograph
+Add-type -Path ..\PSADigraph\bin\Debug\PSADigraph.dll
+
 
 
 function Get-AST {
@@ -134,11 +137,27 @@ Function New-FunctionDefinition{
          $FunctionDefined=$null
     )
   
-    Write-warning "FunctionDefinition  $name -> $CalledFunction"
+    Write-warning "FunctionDefinition  $name -> $FunctionDefined"
     [pscustomObject]@{
       PSTypeName='FunctionDefinition';
       Name=$Name;
       FunctionDefined=$FunctionDefined
+    }
+}
+
+Function New-FileDependency{
+    param(
+         [Parameter(Mandatory=$True,position=0)]
+        $Name,
+         [Parameter(position=1)]
+         $Usedfile=$null
+    )
+  
+    Write-warning "FileDependency  $name -> $UsedFile"
+    [pscustomObject]@{
+      PSTypeName='Usedfile';
+      Name=$Name;
+      Usedfile=$Usedfile
     }
 }
 
@@ -156,6 +175,11 @@ $ObjectMap = @{
       Follow_Property = 'FunctionDefined'
       Follow_Label = 'Define'
       Label_Property = 'Name'
+    }
+    "FileDependency" = @{
+      Follow_Property = 'Usedfile'
+      Follow_Label = 'Depend'
+     Label_Property = 'Name'
    }
 }
 
