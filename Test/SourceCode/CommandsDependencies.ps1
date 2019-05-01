@@ -1,18 +1,40 @@
-#Requires -Modules @{ ModuleName="AzureRM.Netcore"; ModuleVersion="0.12.0" }
+﻿#Requires -Modules @{ ModuleName="AzureRM.Netcore"; ModuleVersion="0.12.0" }
 #Requires -Modules @{ ModuleName="AzureRM.Netcore"; Requiredversion="0.13.0"; GUID = 'a5d7c151-56cf-40a4-839f-0019898eb324'}
 #Requires -Modules Pester
 
 #v5
 #Resources used by the using statement must exist
 using assembly System.Windows.Forms
-using assembly 'System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089' 
+using assembly 'System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089'
 using assembly 'C:\WINDOWS\Microsoft.Net\assembly\GAC_MSIL\System.Windows.Forms\v4.0_4.0.0.0__b77a5c561934e089\System.Windows.Forms.dll'
 
 using namespace System.Windows.Forms
 using namespace ServiceProcess
 
 Using module Pester
+Using module @{ ModuleName="ester"; GUID='a699dea5-2c73-4616-a270-1f7abb777e71';ModuleVersion="4.7.3" }
 Using module @{ ModuleName="Pester"; ModuleVersion="4.7.3" }
+#Using module @{ ModuleName="Pester"} #todo error
+
+# see https://github.com/PowerShell/PowerShell/blob/master/test/powershell/Language/Classes/scripting.Classes.using.tests.ps1#L205
+#
+#$ast.UsingStatements
+# UsingStatementKind  : Module
+# Name                :        #can be 'ester'
+# Alias               :
+# ModuleSpecification : @{ ModuleName="ester"; GUID='a699dea5-2c73-4616-a270-1f7abb777e71';ModuleVersion="4.7.3" }
+# Extent              : Using module @{ ModuleName="ester";
+#                       GUID='a699dea5-2c73-4616-a270-1f7abb777e71';ModuleVersion="4.7.3" }
+
+
+#errorParse
+# Extent          : Using module @{ ModuleName="ester";
+#                   GUID='a699dea5-2c73-4616-a270-1f7abb777e71';ModuleVersion="4.7.3" }
+# ErrorId         : ModuleNotFoundDuringParse
+# Message         : Impossible de trouver le module @{ ModuleName="ester";
+#                   GUID='a699dea5-2c73-4616-a270-1f7abb777e71';ModuleVersion="4.7.3" }.
+# IncompleteInput : False
+
 Using module 'C:\Program Files\WindowsPowerShell\Modules\Pester\4.7.3\Pester.psd1'
 
 Import-module c:\temp\modules\my.dll
@@ -67,20 +89,20 @@ One.ps1 #erreur mais possible
 
 
 Start-Process msiexec.exe -ArgumentList "/X {000000C57B8D-16EB-4FD4-959E-F868BF96E867} /qn /norestart" -wait
-Start-Process "$Path\Prg.exe" -ArgumentList " /p1=data_01 /Timeout=5 " 
+Start-Process "$Path\Prg.exe" -ArgumentList " /p1=data_01 /Timeout=5 "
 Start-Process ipconfig.exe /release -wait
 
 Start msiexec.exe -ArgumentList "/X {000000C57B8D-16EB-4FD4-959E-F868BF96E867} /qn /norestart" -wait
-Start "$Path\Prg.exe" -ArgumentList " /p1=data_01 /Timeout=5 " 
+Start "$Path\Prg.exe" -ArgumentList " /p1=data_01 /Timeout=5 "
 Start ipconfig.exe /release -wait
 
 saps msiexec.exe -ArgumentList "/X {000000C57B8D-16EB-4FD4-959E-F868BF96E867} /qn /norestart" -wait
-saps "$Path\Prg.exe" -ArgumentList " /p1=data_01 /Timeout=5 " 
+saps "$Path\Prg.exe" -ArgumentList " /p1=data_01 /Timeout=5 "
 saps ipconfig.exe /release -wait
 
 TASKKILL /F /IM Vscan.exe /T
 TASKKILL.exe /F /IM Vscan.exe /T
-C:\temp\code "Test" 
+C:\temp\code "Test"
 
 
 Add-Type -path C:\temp\MyAssembly.dll

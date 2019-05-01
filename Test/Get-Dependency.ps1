@@ -3,6 +3,18 @@
 #todo 'identité composite',Unicité ?
 #                             Module Name Or Module,Version,Guid
 #                             ModulePath\V1\Name; ModulePath\V2\Name
+#connaitre le parent
+#info de définition de l'objet AST (powershell)
+#info de relation de l'objet  (Graph)
+#info de relative au type d'objet  (Rapport)
+#Information de gestion (error, type d'appel)
+#ex : pour une module $StaticParameters.Name la classe [Microsoft.PowerShell.Commands.ModuleSpecification]
+#     ne contient -AsCustomObject  qui permet de déterminer si on visualise les fonction du module importés
+#     Pour using le module peut ne pas exister, on ne peut donc avoir plus d'info sur l'objet
+#     Idem pour une analyse  de DLL impossible 
+#     Certain appel peuvent ne pas être résolu
+
+
 
 Function Get-StaticParameterBinder{
  param(
@@ -20,6 +32,7 @@ Function Get-StaticParameterBinder{
         Ast=$Command
         Name = $binding.BoundParameters['Name'].ConstantValue
         FullyQualifiedName = $binding.BoundParameters['FullyQualifiedName'].Value
+        AsCustomObject=$binding.BoundParameters['AsCustomObject'].ConstantValue
      }
   }
   elseif ($Process)
@@ -54,8 +67,14 @@ Function Get-StaticParameterBinder{
 
 function Get-UsingStatementParameter{
 #The referenced file must exist when the AST is build
+#
+#note: parsefile(ast) can return errors when a using statement define a unknown module
+# The method VisitUsingStatement from the internal class SymbolResolve cal the method GetModulesFromUsingModule
+# that call get-module to find the module informations
+
   Param (
-    [System.Management.Automation.Language.UsingStatementAst] $UsingStatement
+    [System.Management.Automation.Language.UsingStatementAst] $UsingStatement,
+    $AstParseStringError
   )
     Switch ($UsingStatement.UsingStatementKind)
     {
@@ -66,7 +85,17 @@ function Get-UsingStatementParameter{
         'Command' { Write-Error 'Not implemented in 5.1 or 6.2' }
 
           # Module 2 A parse time reference or alias to a module.
-        'Module' {}
+        'Module' {
+                      #https://docs.microsoft.com/en-us/dotnet/api/system.management.automation.language.usingstatementast.name
+                      #Name 	: When Alias is null or ModuleSpecification is null, the item being used, otherwise the alias name.
+                      if ( ($null -eq $UsingStatement.Alias) -or ($null -eq $UsingStatement.ModuleSpecification) )
+                      { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.Name) }
+                      elseif ($null -ne $UsingStatement.ModuleSpecification) 
+                      { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.ModuleSpecification.KeyValuePairs) }
+                      else {
+                        write-warning "todo -> use assert ParserStrings.UsingStatementNotSupported);"
+                      }
+                 }
 
           # Namespace 3 A parse time statement that allows specifying types without their full namespace.
         'Namespace' { New-NamespaceDependency -Using $UsingStatement }
@@ -84,8 +113,6 @@ function Get-InformationModule{
     switch ($TypeName)
     {
         'ArrayLiteralAst'      {
-                                    #todo use case : import-module c:\temp\Fdeux.ps1,c:\temp\Fun.ps1
-                                    # import-module c:\temp\Fdeux.ps1,@{} ?
                                     Foreach ($Name in $Commandelement.Elements.value)
                                     { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Name) }
                                }
@@ -95,12 +122,14 @@ function Get-InformationModule{
                                     if ( $Null -ne $StaticParameters.Name)
                                     {
                                         #todo use case: Import-module c:\temp\modules\my.dll
-                                        #todo use case: Import-module c:\temp\my.ps1
+                                        #todo use case: Import-module c:\temp\my.ps1 -verbose
+                                        # COMMENTAIRES : Chargement du module à partir du chemin « C:\temp\fun.ps1 ».
+                                        # COMMENTAIRES : Appel de source de type « dot sourcing » du fichier script « C:\temp\fun.ps1 ».
                                         [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Parameters.Name)
                                     }
                                     if( $Null -ne $StaticParameters.FullyQualifiedName)
                                     {
-                                       [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs
+                                       [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs)
                                     }
                                 }
 
@@ -232,8 +261,26 @@ Function New-DLLDependency{
 
 $sbRead={
     Set-Location G:\PS\PSMap
-    #todo doit étre sans erreur, des intructions using peuvent échouer sur des modules inexistant
-    $Ast=Get-Ast -FilePath '.\Test\SourceCode\CommandsDependencies.ps1'
+    #todo doit étre sans erreur de syntaxe
+    #différencier, dans la liste d'erreur, les intructions 'using' en échec sur des modules inexistant
+    try {
+       #create $global:ErrorsAst list
+     $Ast=Get-Ast -FilePath '.\Test\SourceCode\CommandsDependencies.ps1'
+    #  if ( (Get-Variable $ErrorsList).Value.Count -gt 0  )
+    #  {
+    #     $Er= New-Object System.Management.Automation.ErrorRecord(
+    #             (New-Object System.ArgumentException("The code contains syntax errors.")), 
+    #             "InvalidSyntax", 
+    #             "InvalidData",
+    #             "[AST]"
+    #            )  
+  
+    #     $PSCmdlet.WriteError($Er)
+    #  }
+    # } catch [System.ArgumentException] {
+    #   if ($_.FullyQualifiedErrorId -eq 'InvalidSyntax,Get-AST')
+    #   { Write-debug "$ErrorsAst"}
+    # }
     $Commands=$ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.CommandAst] },$true)
 }
 
@@ -242,9 +289,8 @@ $sbRead={
 #Return Microsoft.PowerShell.Commands.ModuleSpecification
 $Ast.ScriptRequirements.RequiredModules
 
-$UsingStatements=$ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.UsingStatementAst] },$true)
-foreach ($UsingStatement in $UsingStatements)
-{ Get-UsingStatementParameter $UsingStatement }
+foreach ($UsingStatement in $Ast.UsingStatements)
+{ Get-UsingStatementParameter $UsingStatement $global:ErrorsAst }
 
 foreach ($Command in $Commands)
 {

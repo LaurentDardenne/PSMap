@@ -2,11 +2,8 @@
 Import-Module PSAutograph
 Add-type -Path ..\PSADigraph\bin\Debug\PSADigraph.dll
 
-
-
 function Get-AST {
-  #from http://becomelotr.wordpress.com/2011/12/19/powershell-vnext-ast/
-  
+#from http://becomelotr.wordpress.com/2011/12/19/powershell-vnext-ast/
   <#
   
   .Synopsis
@@ -68,18 +65,16 @@ function Get-AST {
   
       # Name of the list of Errors.
       [Alias('EL')]
-      [ValidateScript({$_ -ne 'ErrorsList'})] 
       [string]$ErrorsList = 'ErrorsAst',
       
       # Name of the list of Tokens.
       [Alias('TL')]
-      [ValidateScript({$_ -ne 'TokensList'})]
-      [string]$TokensList = 'Tokens',
-      [switch] $Strict
+      [string]$TokensList = 'Tokens'
   )
       New-Variable -Name $ErrorsList -Value $null -Scope Global -Force
       New-Variable -Name $TokensList -Value $null -Scope Global -Force
-
+  
+  
       switch ($psCmdlet.ParameterSetName) {
           File {
               $ParseFile = (Resolve-Path -Path $FilePath).ProviderPath
@@ -90,28 +85,14 @@ function Get-AST {
               )
           }
           Input {
-              [System.Management.Automation.Language.Parser]::ParseInput(
+            [System.Management.Automation.Language.Parser]::ParseInput(
                   $InputScript, 
                   [ref](Get-Variable -Name $TokensList),
                   [ref](Get-Variable -Name $ErrorsList)
               )
           }
       }
-     if ( (Get-Variable $ErrorsList).Value.Count -gt 0  )
-     {
-        $Er= New-Object System.Management.Automation.ErrorRecord(
-                (New-Object System.ArgumentException("La syntaxe du code est erronée.")), 
-                "InvalidSyntax", 
-                "InvalidData",
-                "[AST]"
-               )  
-  
-        if ($Strict) 
-        { $PSCmdlet.ThrowTerminatingError($Er)}
-        else
-        { $PSCmdlet.WriteError($Er)}
-     }
-} #Get-AST
+}
 
 Function New-CalledFunction{
     param(
