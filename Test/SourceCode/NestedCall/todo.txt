@@ -1,0 +1,23 @@
+Call et Depend sont similaire pour un objet script
+Code (contenu) et container de code (contenant), container de container
+
+On doit connaitre le parent pour construictire le graph
+ - un script principal (parent) appel un script
+ -une fonction (parent) du script (parent de la fonction) appel un script
+
+
+Si Objet script
+ si ampersand (c'est un traitement)
+  -> on ajoute un objet script 
+      -> si dans une fonction ajoute un lien 'call' de l'objet fonction vers l'objet script
+
+si dot (c'est un traitement + des définitions)
+  -> on ajoute un objet script 
+      -> si dans une fonction ajoute un lien 'call'
+    recherche les fonctions que ce script défini
+    insére les objets fonction dans le graph principal
+    ajoute un lien 'Défine' dans le graph principal
+    recherche les fonctions du script principal appelant des fonction définies dans le script
+    (l'on a un seul niveau en dotsource)
+    (note sinon on recherche d'abord les définition des scripts, 
+    on les insére dans le graph principal puis on recherche les fonctions du script principal )
