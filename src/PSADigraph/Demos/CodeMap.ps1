@@ -1,4 +1,7 @@
-#todoSuppose Language mode: FullLanguage
+#todo Suppose Language mode: FullLanguage
+#todo function definition through assignment:
+# $function:bob = {param ($name) Write-Host "Hi $name, I'm Bob!"}
+
 Import-Module PSAutograph
 Add-type -Path ..\PSADigraph\bin\Debug\PSADigraph.dll
 

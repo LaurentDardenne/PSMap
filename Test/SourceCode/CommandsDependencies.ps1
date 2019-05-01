@@ -139,3 +139,6 @@ $exe = "H:\backup\scripts\vshadow.exe“
 &"C:\Program Files (x86)\Notepad++\notepad++.exe"
 &"H:\backup\scripts\sbrun.exe" --% -mdn etc
 #>
+
+#todo function definition through assignment:
+$function:bob = {param ($name) Write-Host "Hi $name, I'm Bob!"}
