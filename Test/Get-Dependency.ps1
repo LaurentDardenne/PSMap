@@ -263,7 +263,7 @@ $sbRead={
     Set-Location G:\PS\PSMap
     #todo doit étre sans erreur de syntaxe
     #différencier, dans la liste d'erreur, les intructions 'using' en échec sur des modules inexistant
-    try {
+    #try {
        #create $global:ErrorsAst list
      $Ast=Get-Ast -FilePath '.\Test\SourceCode\CommandsDependencies.ps1'
     #  if ( (Get-Variable $ErrorsList).Value.Count -gt 0  )
@@ -282,6 +282,15 @@ $sbRead={
     #   { Write-debug "$ErrorsAst"}
     # }
     $Commands=$ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.CommandAst] },$true)
+    #TODO     &$function:bob  $function:bob.InvokeXXX()
+    
+    $FunctionWithAssign=$ast.FindAll(
+        { param($Ast) 
+        ($Ast -is [System.Management.Automation.Language.AssignmentStatementAst]) -and
+        ($Ast.Left.VariablePath.DriveName -eq 'function') -and 
+        ($Ast.Right.Expression.StaticType.fullname -eq 'System.Management.Automation.ScriptBlock')
+        },$true)
+    #$s.Left.VariablePath.UserPath -replace '^function:',''    
 }
 
 .$sbRead
