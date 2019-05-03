@@ -11,7 +11,8 @@ Table of Contents
 
 Introduction
 ============
-PSMap
+The main classes come from the PsScriptAnalyzer module version 1.18.0.
+They allow to build a graph of dependencies of the functions contained in a script.
 
 [Back to ToC](#table-of-contents)
 
