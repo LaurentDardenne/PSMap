@@ -15,6 +15,16 @@
 #     Certain appel peuvent ne pas être résolu
 
 
+function Test-ScriptName{
+ param( $Path )     
+  try {
+    if ($Path -isnot [System.IO.FileInfo])
+    { $Path=[System.IO.FileInfo]$Path }
+    $Path.Extension -eq '.ps1'
+  } catch {
+    $false
+  }
+}
 
 Function Get-StaticParameterBinder{
  param(
@@ -122,22 +132,33 @@ function Get-InformationModule{
                                     if ( $Null -ne $StaticParameters.Name)
                                     {
                                         #todo use case: Import-module c:\temp\modules\my.dll
-                                        #todo use case: Import-module c:\temp\my.ps1 -verbose
-                                        # COMMENTAIRES : Chargement du module à partir du chemin « C:\temp\fun.ps1 ».
-                                        # COMMENTAIRES : Appel de source de type « dot sourcing » du fichier script « C:\temp\fun.ps1 ».
-                                        [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Parameters.Name)
-                                    }
-                                    if( $Null -ne $StaticParameters.FullyQualifiedName)
-                                    {
-                                       [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs)
-                                    }
-                                }
+                                        # COMMENTAIRES : Chargement du module à partir du chemin « C:\temp\fun.ps1 ».
+                                        # COMMENTAIRES : Appel de source de type « dot sourcing » du fichier script « C:\temp\fun.ps1 ».
+                                        if  (Test-ScriptName $StaticParameters.Name)
+                                        { 
+                                            #Import-module File.ps1 is equal to dotsource .ps1
+                                            New-InformationScript -FileInfo $StaticParameters.Name -InvocationOperator 'Dot'
+                                        }
+                                        else 
+                                        {   [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Parameters.Name) }
+                                      }
+                                      if( $Null -ne $StaticParameters.FullyQualifiedName)
+                                      { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs) }
+                              }                                        
 
         'HashtableAst'      {
                                [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.KeyValuePairs)
                             }
 
-        'StringConstantExpressionAst' { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) }
+        'StringConstantExpressionAst' { 
+                                        if  (Test-ScriptName $CommandElement.Value)
+                                        { 
+                                           #Import-module File.ps1 is equal to dotsource .ps1
+                                           New-InformationScript -FileInfo $CommandElement.Value -InvocationOperator 'Dot'
+                                        }
+                                        else
+                                        { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) }
+                                      }        
             
          default { Write-error "Get-InformationModule: the recognition of this type is not available: $($TypeName)"}
     }
@@ -149,18 +170,29 @@ function Get-InformationProgram{
    )
    Get-StaticParameterBinder $Command -Process
 }
+function New-InformationScript{
+  param(
+    $FileInfo,
+    $InvocationOperator
+  )
+  if ($InvocationOperator -eq 'Unknown')
+  {
+      #By default 
+      # this statement : .\One.ps1
+      # is equal to &'.\One.ps1'      
+      $InvocationOperator='Ampersand'
+  }
+  return [pscustomobject]@{
+            PSTypeName='InformationScript';
+            FileInfo=$FileInfo;
+            InvocationOperator=$InvocationOperator
+          }
+}
 function Get-InformationScript{
   param(
      [System.Management.Automation.Language.CommandAst] $Command,
       [System.IO.FileInfo]$FileInfo
   )
- function New-InformationScript{
-   param(
-      $FileName,
-      $InvocationOperator
-   )
-   return @{FileName=$FileName; InvocationOperator=$InvocationOperator}      
-}
 
 #$Command.CommandElement.Count -eq 0  without parameter
 #$Command.CommandElement.Count -gt 0  with parameters
@@ -257,143 +289,4 @@ Function New-DLLDependency{
     PSTypeName='DLLDependency'
     Name=$name
   }
-}
-
-$sbRead={
-    Set-Location G:\PS\PSMap
-    #todo doit étre sans erreur de syntaxe
-    #différencier, dans la liste d'erreur, les intructions 'using' en échec sur des modules inexistant
-    #try {
-       #create $global:ErrorsAst list
-     $Ast=Get-Ast -FilePath '.\Test\SourceCode\CommandsDependencies.ps1'
-    #  if ( (Get-Variable $ErrorsList).Value.Count -gt 0  )
-    #  {
-    #     $Er= New-Object System.Management.Automation.ErrorRecord(
-    #             (New-Object System.ArgumentException("The code contains syntax errors.")), 
-    #             "InvalidSyntax", 
-    #             "InvalidData",
-    #             "[AST]"
-    #            )  
-  
-    #     $PSCmdlet.WriteError($Er)
-    #  }
-    # } catch [System.ArgumentException] {
-    #   if ($_.FullyQualifiedErrorId -eq 'InvalidSyntax,Get-AST')
-    #   { Write-debug "$ErrorsAst"}
-    # }
-    $Commands=$ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.CommandAst] },$true)
-    #TODO     &$function:bob  $function:bob.InvokeXXX()
-    
-    $FunctionWithAssign=$ast.FindAll(
-        { param($Ast) 
-        ($Ast -is [System.Management.Automation.Language.AssignmentStatementAst]) -and
-        ($Ast.Left.VariablePath.DriveName -eq 'function') -and 
-        ($Ast.Right.Expression.StaticType.fullname -eq 'System.Management.Automation.ScriptBlock')
-        },$true)
-    #$s.Left.VariablePath.UserPath -replace '^function:',''    
-}
-
-.$sbRead
-
-#Return Microsoft.PowerShell.Commands.ModuleSpecification
-$Ast.ScriptRequirements.RequiredModules
-
-foreach ($UsingStatement in $Ast.UsingStatements)
-{ Get-UsingStatementParameter $UsingStatement $global:ErrorsAst }
-
-foreach ($Command in $Commands)
-{
-    $CommandName=$Command.GetCommandName()
-    if ($null -ne $CommandName)
-    {
-        if ($CommandName -match 'Import-Module|IPMO')
-        { Get-InformationModule $Command ; Continue }
-      
-        if ($CommandName -match 'Start-Process|saps|start')
-        { Get-InformationProgram $Command ; Continue }
-      
-        try {
-          $FileName=[System.IO.FileInfo]$CommandName
-          if ($Filename.Extension -eq '.ps1')
-          { Get-InformationScript $Command $FileName ; Continue }
-          else
-          { Write-Warning "todo Programm ? '$CommandName'" }
-        } catch {
-           Write-Warning "Is not a file name '$CommandName'"
-        }
-
-        if ($CommandName -match 'Add-Type')
-        { Get-InformationDLL $Command ; Continue }
-    }
-    if ($Command.CommandElements[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
-    {
-        $Command
-        pause
-        $CmdInfo=Get-Command $Command.CommandElements[0].Value
-        # System.Management.Automation.AliasInfo
-        # System.Management.Automation.ApplicationInfo
-        # System.Management.Automation.CmdletInfo
-        # System.Management.Automation.ExternalScriptInfo
-        # System.Management.Automation.FunctionInfo
-        # System.Management.Automation.RemoteCommandInfo #Call Get-Command on a remote server
-        # System.Management.Automation.ScriptInfo
-        if ($CmdInfo -is [System.Management.Automation.ApplicationInfo])
-        {
-           $CmdInfo|
-            Select-Object Name,Source,@{ Name='ArgumentList';e={$Command.CommandElements[0].Parent.toString() -replace $Command.CommandElements[0].Value,''} }
-           Continue 
-        }
-    }
-    Write-Error "Foreach Commands: unknown case: '$($Command)'"; Continue
-}
-
-$Expressions=$Ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.InvokeMemberExpressionAst] },$true)
-foreach ($Current in $Expressions)
-{
-    if ($Current.Expression.Typename -match '(^System\.Reflection\.Assembly$|Reflection\.Assembly$)')
-    {
-        if ($Current.Member -match '(^UnsafeLoadFrom$|^Load$|^LoadFile$ |^LoadFrom$|^LoadWithPartialNameS)')
-        {
-            #TODO Load peut avoir des signatures ayant en 1er param un type différent de string
-            #LoadWithPartialName
-            #la classe AssemblyName peut déterminer ces cas
-            #todo si pas.dll alors c'est un nom court ('System.Windows.Forms')
-            # ou un nom long 'System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5cS61934eO89'
-            if ($Current.Arguments[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
-            {
-                $Value=$Current.Arguments[0].value
-                if ($Value -notmatch '\.dll$')
-                {
-                    try {
-                        Write-warning "not a dll"
-                        #The file name of the assembly is unknown here, it should be in the GAC
-                        New-NamespaceDependency -Assembly $Value
-                    }
-                    catch
-                    {
-                        #todo error or flag into type ‘NamespaceDependency' ?
-                        Write-Warning "DLL analyze impossible for : $Value"
-                    }
-                }
-                else
-                {
-                    New-DLLDependency $Current.Arguments[0].value
-                    [pscustomObject]@{
-                        PSTypeName='DLLDependency';
-                        Name=$name
-                    }
-                }
-            }
-            else
-            {
-                #TODO
-                # unresolved (informations)
-                Write-warning "$($current.Arguments[0].GetType().FullName)"
-             }
-        }
-    }
-    else
-    {
-      Write-Error "Foreach Expressions : unknown case : '$($Current)'"; Continue
-    }
 }
