@@ -14,16 +14,12 @@
 #     Idem pour une analyse  de DLL impossible 
 #     Certain appel peuvent ne pas être résolu
 
+#todo doit pointer sur le contexte de l'appelant
+$sbIsScriptDotSource={ ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript') }
 
 function Test-ScriptName{
- param( $Path )     
-  try {
-    if ($Path -isnot [System.IO.FileInfo])
-    { $Path=[System.IO.FileInfo]$Path }
-    $Path.Extension -eq '.ps1'
-  } catch {
-    $false
-  }
+ param( [System.IO.FileInfo] $Path )
+  $Path.Extension -eq '.ps1'
 }
 
 Function Get-StaticParameterBinder{
@@ -123,6 +119,7 @@ function Get-InformationModule{
     switch ($TypeName)
     {
         'ArrayLiteralAst'      {
+                                    #todo on peut avoir Import-module File.ps1, File2.ps1 :/
                                     Foreach ($Name in $Commandelement.Elements.value)
                                     { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Name) }
                                }
@@ -132,18 +129,19 @@ function Get-InformationModule{
                                     if ( $Null -ne $StaticParameters.Name)
                                     {
                                         #todo use case: Import-module c:\temp\modules\my.dll
-                                        # COMMENTAIRES : Chargement du module à partir du chemin « C:\temp\fun.ps1 ».
-                                        # COMMENTAIRES : Appel de source de type « dot sourcing » du fichier script « C:\temp\fun.ps1 ».
-                                        if  (Test-ScriptName $StaticParameters.Name)
+                                        # si c'est un module binaire ok, si c'est une dll dotnet sans déclaration de cmdlet
+                                        #alors c'est une 'erreur' d'utilisation de IPMO comme IPMO File.sp1 peut l'être (confusion)
+                                        $FileInfo=[System.IO.FileInfo]$StaticParameters.Name
+                                        if  (Test-ScriptName $FileInfo)
                                         { 
                                             #Import-module File.ps1 is equal to dotsource .ps1
-                                            New-InformationScript -FileInfo $StaticParameters.Name -InvocationOperator 'Dot'
+                                            New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
                                         }
                                         else 
                                         {   [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Parameters.Name) }
-                                      }
-                                      if( $Null -ne $StaticParameters.FullyQualifiedName)
-                                      { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs) }
+                                    }
+                                    if( $Null -ne $StaticParameters.FullyQualifiedName)
+                                    { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs) }
                               }                                        
 
         'HashtableAst'      {
@@ -151,10 +149,11 @@ function Get-InformationModule{
                             }
 
         'StringConstantExpressionAst' { 
-                                        if  (Test-ScriptName $CommandElement.Value)
+                                        $FileInfo=[System.IO.FileInfo]$CommandElement.Value
+                                        if  (Test-ScriptName $FileInfo)
                                         { 
                                            #Import-module File.ps1 is equal to dotsource .ps1
-                                           New-InformationScript -FileInfo $CommandElement.Value -InvocationOperator 'Dot'
+                                           New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
                                         }
                                         else
                                         { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) }
@@ -172,16 +171,17 @@ function Get-InformationProgram{
 }
 function New-InformationScript{
   param(
-    $FileInfo,
-    $InvocationOperator
+    [System.IO.FileInfo] $FileInfo,
+    [string] $InvocationOperator
   )
-  if ($InvocationOperator -eq 'Unknown')
-  {
-      #By default 
-      # this statement : .\One.ps1
-      # is equal to &'.\One.ps1'      
-      $InvocationOperator='Ampersand'
-  }
+  #todo must be managed by the caller
+  # if ($InvocationOperator -eq 'Unknown')
+  # {
+  #     #By default 
+  #     # this statement : .\One.ps1
+  #     # is equal to &'.\One.ps1'      
+  #     $InvocationOperator='Ampersand'
+  # }
   return [pscustomobject]@{
             PSTypeName='InformationScript';
             FileInfo=$FileInfo;
@@ -191,13 +191,13 @@ function New-InformationScript{
 function Get-InformationScript{
   param(
      [System.Management.Automation.Language.CommandAst] $Command,
-      [System.IO.FileInfo]$FileInfo
+     [System.IO.FileInfo]$FileInfo
   )
 
-#$Command.CommandElement.Count -eq 0  without parameter
-#$Command.CommandElement.Count -gt 0  with parameters
-#New-InformationScript -Name $Command.CommandElements[0].Value -InvocationOperator $Command.InvocationOperator
-New-InformationScript -FileName $FileInfo.FullName -InvocationOperator $Command.InvocationOperator
+  #$Command.CommandElement.Count -eq 0  without parameter
+  #$Command.CommandElement.Count -gt 0  with parameters
+  #New-InformationScript -Name $Command.CommandElements[0].Value -InvocationOperator $Command.InvocationOperator
+  New-InformationScript -FileName $FileInfo.FullName -InvocationOperator $Command.InvocationOperator
 }
 
 function Get-InformationDLL{
