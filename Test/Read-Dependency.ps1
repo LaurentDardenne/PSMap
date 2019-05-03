@@ -138,7 +138,7 @@ foreach ($Current in $Expressions)
     }
 }
 
- $InformationCommands|
+$InformationCommands|
   where-object {
-      ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript')
+    ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript')
   }
