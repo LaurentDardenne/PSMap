@@ -103,6 +103,9 @@ saps ipconfig.exe /release -wait
 TASKKILL /F /IM Vscan.exe /T
 TASKKILL.exe /F /IM Vscan.exe /T
 C:\temp\code "Test"
+&"C:\Users\my\AppData\Local\Programs\Microsoft VS Code\code.exe" c:\temp\t.ps1
+# .exe est optionnel (cf mode de rechercher des fichiers)
+&"C:\Users\my\AppData\Local\Programs\Microsoft VS Code\code" c:\temp\t.ps1
 
 
 Add-Type -path C:\temp\MyAssembly.dll
@@ -140,5 +143,7 @@ $exe = "H:\backup\scripts\vshadow.exe“
 &"H:\backup\scripts\sbrun.exe" --% -mdn etc
 #>
 
-#todo function definition through assignment:
+#function definition through assignment:
 $function:bob = {param ($name) Write-Host "Hi $name, I'm Bob!"}
+
+#todo dépendances dans les fichiers de types .ps1xml (ETS)
