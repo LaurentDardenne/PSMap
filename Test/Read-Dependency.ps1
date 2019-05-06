@@ -1,6 +1,7 @@
 
   Set-Location G:\PS\PSMap
-  '.\Test\SourceCode\CommandsDependencies.ps1'
+  ipmo G:\PS\PSMap\src\Dependency\Dependency.psm1 -force
+  $path= 'G:\PS\PSMap\Test\SourceCode\CommandsDependencies.ps1'
 
   Function Read-Dependency {
        param(
@@ -60,7 +61,7 @@
         if ($null -ne $CommandName)
         {
             if ($CommandName -match 'Import-Module|IPMO')
-            { Get-InformationModule $Command -Contener ; Continue }
+            { Get-InformationModule $Command -Contener $CurrentContener; Continue }
         
             if ($CommandName -match 'Start-Process|saps|start')
             { Get-InformationProgram $Command ; Continue }
@@ -80,8 +81,6 @@
         }
         if ($Command.CommandElements[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
         {
-            $Command
-            pause
             $CmdInfo=Get-Command $Command.CommandElements[0].Value
             # System.Management.Automation.AliasInfo
             # System.Management.Automation.ApplicationInfo
@@ -151,6 +150,8 @@
         }
     }
 }
+
+$InformationCommands=Read-Dependency $path
 
 $InformationCommands|
   where-object {
