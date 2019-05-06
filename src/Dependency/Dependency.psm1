@@ -8,11 +8,11 @@
 #info de relation de l'objet  (Graph)
 #info de relative au type d'objet  (Rapport)
 #Information de gestion (error, type d'appel)
-#ex : pour une module $StaticParameters.Name la classe [Microsoft.PowerShell.Commands.ModuleSpecification]
-#     ne contient -AsCustomObject  qui permet de déterminer si on visualise les fonction du module importés
-#     Pour using le module peut ne pas exister, on ne peut donc avoir plus d'info sur l'objet
+#ex : pour un module $StaticParameters.Name la classe [Microsoft.PowerShell.Commands.ModuleSpecification]
+#     ne contient -AsCustomObject qui permet de déterminer si on visualise les fonctions du module importés
+#     Pour Using le module peut ne pas exister, on ne peut donc avoir plus d'info sur l'objet
 #     Idem pour une analyse  de DLL impossible 
-#     Certain appel peuvent ne pas être résolu
+#     Certain appels peuvent ne pas être résolus
 
 #todo doit pointer sur le contexte de l'appelant
 $sbIsScriptDotSource={ ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript') }
@@ -21,6 +21,29 @@ function Test-ScriptName{
  param( [System.IO.FileInfo] $Path )
   $Path.Extension -eq '.ps1'
 }
+
+function ConvertTo-FileInfo{
+  #todo voir les difficultés avec les différentes constructions de PSPath
+  param ($Path)
+
+  $ScriptPath=Convert-Path $Path
+  [System.IO.FileInfo]$ScriptPath
+}
+
+Function New-Contener{
+  param(
+           [Parameter(Mandatory=$True,position=0)]
+          $Path,
+           [Parameter(Mandatory=$True,position=1)]
+          $Type
+  )
+  
+    [pscustomobject]@{
+      PSTypeName='Contener';
+      Path=$Path;
+      Type=$Type;
+     }
+}# New-Contener
 
 Function Get-StaticParameterBinder{
  param(
@@ -92,16 +115,19 @@ function Get-UsingStatementParameter{
 
           # Module 2 A parse time reference or alias to a module.
         'Module' {
+                   if ($null -ne $UsingStatement.ModuleSpecification) 
+                   { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.ModuleSpecification.KeyValuePairs) }
+                   elseif ( ($null -eq $UsingStatement.Alias) -and ($null -ne $UsingStatement.Name) )
+                   {
                       #https://docs.microsoft.com/en-us/dotnet/api/system.management.automation.language.usingstatementast.name
                       #Name 	: When Alias is null or ModuleSpecification is null, the item being used, otherwise the alias name.
-                      if ( ($null -eq $UsingStatement.Alias) -or ($null -eq $UsingStatement.ModuleSpecification) )
-                      { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.Name) }
-                      elseif ($null -ne $UsingStatement.ModuleSpecification) 
-                      { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.ModuleSpecification.KeyValuePairs) }
-                      else {
-                        write-warning "todo -> use assert ParserStrings.UsingStatementNotSupported);"
-                      }
-                 }
+                     [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.Name) 
+                   }
+                   else {
+                     write-warning "todo -> use assert ParserStrings.UsingStatementNotSupported);"
+                   }
+             }
+
 
           # Namespace 3 A parse time statement that allows specifying types without their full namespace.
         'Namespace' { New-NamespaceDependency -Using $UsingStatement }
@@ -110,6 +136,7 @@ function Get-UsingStatementParameter{
         'Type' { Write-Error 'Not implemented in 5.1 or 6.2' }
    }
 }
+
 function Get-InformationModule{
   param(
     [System.Management.Automation.Language.CommandAst] $Command
@@ -131,14 +158,14 @@ function Get-InformationModule{
                                         #todo use case: Import-module c:\temp\modules\my.dll
                                         # si c'est un module binaire ok, si c'est une dll dotnet sans déclaration de cmdlet
                                         #alors c'est une 'erreur' d'utilisation de IPMO comme IPMO File.sp1 peut l'être (confusion)
-                                        $FileInfo=[System.IO.FileInfo]$StaticParameters.Name
+                                        $FileInfo=ConvertTo-FileInfo $StaticParameters.Name
                                         if  (Test-ScriptName $FileInfo)
                                         { 
                                             #Import-module File.ps1 is equal to dotsource .ps1
                                             New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
                                         }
                                         else 
-                                        {   [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Parameters.Name) }
+                                        {   [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.Name) }
                                     }
                                     if( $Null -ne $StaticParameters.FullyQualifiedName)
                                     { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs) }
@@ -149,7 +176,7 @@ function Get-InformationModule{
                             }
 
         'StringConstantExpressionAst' { 
-                                        $FileInfo=[System.IO.FileInfo]$CommandElement.Value
+                                        $FileInfo=ConvertTo-FileInfo $CommandElement.Value
                                         if  (Test-ScriptName $FileInfo)
                                         { 
                                            #Import-module File.ps1 is equal to dotsource .ps1
@@ -158,7 +185,7 @@ function Get-InformationModule{
                                         else
                                         { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) }
                                       }        
-            
+
          default { Write-error "Get-InformationModule: the recognition of this type is not available: $($TypeName)"}
     }
 }
@@ -197,7 +224,7 @@ function Get-InformationScript{
   #$Command.CommandElement.Count -eq 0  without parameter
   #$Command.CommandElement.Count -gt 0  with parameters
   #New-InformationScript -Name $Command.CommandElements[0].Value -InvocationOperator $Command.InvocationOperator
-  New-InformationScript -FileName $FileInfo.FullName -InvocationOperator $Command.InvocationOperator
+  New-InformationScript -FileInfo $FileInfo.FullName -InvocationOperator $Command.InvocationOperator
 }
 
 function Get-InformationDLL{
