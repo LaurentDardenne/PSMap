@@ -17,12 +17,11 @@
          $ErrorActionPreference=$EAP
          Return
        }
-    #todo doit étre sans erreur de syntaxe
-    #différencier, dans la liste d'erreur, les intructions 'using' en échec sur des modules inexistant
-    #try {
-       #create $global:ErrorsAst list
+
+
+     $CurrentContener=New-Contener -Path (Convert-Path $Path) -Type Script
+     [Environment]::CurrentDirectory = $CurrentContener.FileInfo.DirectoryName
      $Ast=Get-Ast -FilePath $Path
-     $CurrentContener=New-Contener -Path  (Convert-Path $Path) -Type Script
     #  if ( (Get-Variable $ErrorsList).Value.Count -gt 0  )
     #  {
     #     $Er= New-Object System.Management.Automation.ErrorRecord(
@@ -67,13 +66,14 @@
             { Get-InformationProgram $Command ; Continue }
         
             try {
-            $FileName=[System.IO.FileInfo]$CommandName
-            if ($Filename.Extension -eq '.ps1')
-            { Get-InformationScript $Command $FileName ; Continue }
-            else
-            { Write-Warning "todo Programm ? '$CommandName'" }
+              $FileName=ConvertTo-FileInfo $CommandName
+               #note : pour get-commande si une clause Using provoque une erreur alors sa propriété Scriptblock -eq $null
+              if ($Filename.Extension -eq '.ps1')
+              { Get-InformationScript $Command $FileName ; Continue }
+              else
+              { Write-Warning "todo Programm ? '$CommandName'" }
             } catch {
-            Write-Warning "Is not a file name '$CommandName'"
+              Write-Warning "Is not a file name '$CommandName'"
             }
 
             if ($CommandName -match 'Add-Type')
@@ -157,3 +157,5 @@ $InformationCommands|
   where-object {
     ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript')
   }
+
+$InformationCommands|Group-Object -Property @{'expression'={$_.gettype().fullname}}|fl
