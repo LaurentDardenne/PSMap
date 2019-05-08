@@ -4,99 +4,6 @@
 
 Import-Module PSAutograph
 Add-type -Path ..\PSADigraph\bin\Debug\PSADigraph.dll
-
-function Get-AST {
-#from http://becomelotr.wordpress.com/2011/12/19/powershell-vnext-ast/
-  <#
-  
-  .Synopsis
-     Function to generate AST (Abstract Syntax Tree) for PowerShell code.
-  
-  .DESCRIPTION
-     This function will generate Abstract Syntax Tree for PowerShell code, either from file or direct input.
-     Abstract Syntax Tree is a new feature of PowerShell 3 that should make parsing PS code easier.
-     Because of nature of resulting object(s) it may be hard to read (different object types are mixed in output).
-  
-  .EXAMPLE
-     $AST = Get-AST -FilePath MyScript.ps1
-     $AST will contain syntax tree for MyScript script. Default are used for list of tokens ($Tokens) and errors ($Errors).
-  
-  .EXAMPLE
-     Get-AST -Input 'function Foo { param ($Foo) Write-Host $Foo }' -Tokens MyTokens -Errors MyErors | Format-Custom
-     Display function's AST in Custom View. $MyTokens contain all tokens, $MyErrors would be empty (no errors should be recorded).
-  
-  .INPUTS
-     System.String
-  
-  .OUTPUTS
-     System.Management.Automation.Languagage.Ast
-  
-  .NOTES
-     Just concept of function to work with AST. Needs a polish and shouldn't polute Global scope in a way it does ATM.
-  
-  #>
-  
-  [CmdletBinding(
-      DefaultParameterSetName = 'File'
-  )]
-  param (
-      # Path to file to process.
-      [Parameter(
-          Mandatory,
-          HelpMessage = 'Path to file to process',
-          ParameterSetName = 'File'
-      )]
-      [Alias('Path','PSPath')]
-      [ValidateScript({
-          if (Test-Path -Path $_ -ErrorAction SilentlyContinue) {
-              $true
-          } else {
-              throw "File does not exist!"
-          }
-      })]
-      [string]$FilePath,
-      
-      # Input string to process.
-      [Parameter(
-          Mandatory,
-          HelpMessage = 'String to process',
-          ParameterSetName = 'Input'
-  
-      )]
-      [Alias('Script','IS')]
-      [string]$InputScript,
-  
-      # Name of the list of Errors.
-      [Alias('EL')]
-      [string]$ErrorsList = 'ErrorsAst',
-      
-      # Name of the list of Tokens.
-      [Alias('TL')]
-      [string]$TokensList = 'Tokens'
-  )
-      New-Variable -Name $ErrorsList -Value $null -Scope Global -Force
-      New-Variable -Name $TokensList -Value $null -Scope Global -Force
-  
-  
-      switch ($psCmdlet.ParameterSetName) {
-          File {
-              $ParseFile = (Resolve-Path -Path $FilePath).ProviderPath
-              [System.Management.Automation.Language.Parser]::ParseFile(
-                  $ParseFile, 
-                  [ref](Get-Variable -Name $TokensList),
-                  [ref](Get-Variable -Name $ErrorsList)
-              )
-          }
-          Input {
-            [System.Management.Automation.Language.Parser]::ParseInput(
-                  $InputScript, 
-                  [ref](Get-Variable -Name $TokensList),
-                  [ref](Get-Variable -Name $ErrorsList)
-              )
-          }
-      }
-}
-
 Function New-CalledFunction{
     param(
          [Parameter(Mandatory=$True,position=0)]
@@ -112,7 +19,6 @@ Function New-CalledFunction{
       CalledFunction=$CalledFunction
     }
 }
-
 Function New-FunctionDefinition{
     param(
          [Parameter(Mandatory=$True,position=0)]
@@ -128,7 +34,6 @@ Function New-FunctionDefinition{
       FunctionDefined=$FunctionDefined
     }
 }
-
 Function New-FileDependency{
     param(
          [Parameter(Mandatory=$True,position=0)]
@@ -166,31 +71,28 @@ $ObjectMap = @{
      Label_Property = 'Name'
    }
 }
-
 Function ConvertTo-Vertex {
- # return an array of PSADigraph.Vertex
-    param (
-      #AST Visitor
-      [PSADigraph.FunctionReferenceDigraph] $funcDigraph,
-
-      [Scriptblock] $Code
-    ) 
-  $Code.ast.Visit($funcDigraph)
-  $funcDigraph.GetVertices() #Vertex=function name
+  # return an array of PSADigraph.Vertex
+      param (
+        #AST Visitor
+        [PSADigraph.FunctionReferenceDigraph] $funcDigraph,
+  
+        [System.Management.Automation.Language.ScriptBlockAst] $Ast
+      ) 
+    $Ast.Visit($funcDigraph)
+    $funcDigraph.GetVertices() #Vertex=function name
 }
-
-function ConvertTo-ObjectMap {
+  
+function ConvertTo-FunctionObjectMap {
   param (
-      #AST Visitor
-     [PSADigraph.FunctionReferenceDigraph] $funcDigraph,
+      $CodeMap,
 
-     [Scriptblock] $Code,
+      [Switch] $Function,
 
-     [Switch] $Function,
-
-     [string[]] $Exclude=@()
+      [string[]] $Exclude=@()
   ) 
-  $Vertices=ConvertTo-Vertex $funcDigraph $Code
+  $Vertices= $CodeMap.Digraph.GetVertices() #Vertex=function name 
+ 
   foreach ($vertex in $Vertices.GetEnumerator() )
   {  
     if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
@@ -201,13 +103,13 @@ function ConvertTo-ObjectMap {
     { continue }
 
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
-    $Parent=$Vertex.ast.parent.parent.parent 
+    $Parent=$Vertex.Ast.Parent.Parent.Parent 
     if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
     {
       Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
       New-FunctionDefinition $Parent.Name -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
     }
-    foreach ($CommandCalled in $funcDigraph.GetNeighbors($Vertex) )
+    foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
     {
       if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
       { continue }
@@ -215,69 +117,58 @@ function ConvertTo-ObjectMap {
       if ($CommandCalled.Name -in $Exclude)
       { continue }
 
-      Write-Debug "`tCall  $CommandCalled type $($CommandCalled.ast.Gettype().fullname)"
+      Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
       New-CalledFunction -Name $CurrentFunctionName -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name)
     }
   }  
 }
 function New-LookupTable {
+  #Contains the occurrence number of a function
   param( 
     [PSADigraph.FunctionReferenceDigraph] $funcDigraph,
 
     [PSADigraph.Vertex[]] $Vertices
  )
- Function Add-Name {
-   param( $Name )
-    if ($LookupTable.ContainsKey($Name))
-    { $LookupTable.$Name++ }
-    else
-    { $LookupTable.Add($Name,0) }
+  Function Add-Name {
+    param( $Name )
+      if ($LookupTable.ContainsKey($Name))
+      { $LookupTable.$Name++ }
+      else
+      { $LookupTable.Add($Name,0) }
   }       
 
- $LookupTable=@{}
+  $LookupTable=@{}
 
- foreach ($Vertex in $Vertices) 
- {
-   Add-Name $Vertex.Name
-   foreach ($CommandCalled in $funcDigraph.GetNeighbors($Vertex) )
-   { Add-Name $CommandCalled.Name }
-  
- }
- return ,$LookupTable
-}
-
-$sb={
-  Function Test-NestedThree {
-
-
-    Function Test-NestedOne {
-      Import-module c:\Module\test\test.psd1
-    }
-  
-    Function Test-NestedTwo {
-      Import-module c:\Module\test\test.psd1
-    }
+  foreach ($Vertex in $Vertices) 
+  {
+    Add-Name $Vertex.Name
+    foreach ($CommandCalled in $funcDigraph.GetNeighbors($Vertex) )
+    { Add-Name $CommandCalled.Name }
     
-    #TODO
-    #si NestedOne on retrouve le nom de commande mais pas si Test-NestedOne qui est une définition
-    Test-NestedOne
-    Test-NestedTwo
-    notexist
-    Import-module c:\Module\test\test.psd1
   }
+  return ,$LookupTable
 }
 
-$file=get-command 'MyFile.ps1' #todo
-$funcDigraph = [PSADigraph.FunctionReferenceDigraph]::New()
-$CodeMap=ConvertTo-ObjectMap  $funcDigraph $sb
-#$CodeMap=ConvertTo-ObjectMap  $funcDigraph $File.Scriptblock -Exclude @('Evolution-Log') -Function
+Function New-CodeMap{
+  param(
+        [Parameter(Mandatory=$True,position=0)]
+      $Contener,
+        [Parameter(Mandatory=$True,position=1)]
+      $Ast,
+        [Parameter(Mandatory=$True,position=2)]
+      $DiGraph,
+        [Parameter(Mandatory=$True,position=3)]
+      $Dependencies
+  )
+  
+   #search the functions to fill the digraph
+  $Ast.Visit($Digraph)
 
-$viewer = New-MSaglViewer
-$g1 = New-MSaglGraph
-Set-MSaglGraphObject -Graph $g1 -inputobject $CodeMap -objectMap $ObjectMap
-$resultModal=Show-MSaglGraph $viewer $g1
-
-#Reference count ( Metrics ?) TODO
-$vertices=ConvertTo-Vertex $funcDigraph $File.Scriptblock
-$Lookup=New-LookupTable $funcDigraph $Vertices
-$Lookup.GetEnumerator()|Sort-Object value -Descending
+  [pscustomobject]@{
+    PSTypeName='CodeMap';
+    Contener=$Contener;
+    Ast=$Ast;
+    DiGraph=$DiGraph;
+    Dependencies=$Dependencies;
+  }
+}# New-CodeMap
