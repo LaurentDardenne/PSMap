@@ -1,13 +1,23 @@
+# Avoids one circular dependency, between the modules 'CodeMap' and 'dependency' 
+#todo refactoring ?
 function Get-CodeMap {
+ #Prepares the data needed to build function dependency graphs and file dependencies
+ # that are external to the current file
     param(
       [string] $Path
   )  
-  
+    #Use the the fullpath name
+    #todo how to define -Type ?
+    #todo if path does not exist or need access rights
+    #add error Ast
+    $Contener=New-Contener -Path (Convert-Path $Path) -Type Script
+
     $Parameters=@{
-      Contener=New-Contener -Path (Convert-Path $Path) -Type Script
-      Ast=Get-Ast -FilePath $Path
+      Contener=$Contener
+      Ast=Get-Ast -FilePath $Contener.FileInfo.FullName
       DiGraph=[PSADigraph.FunctionReferenceDigraph]::New()
       Dependencies= Read-Dependency $Path
+      $AstError=$null
     }
       #todo doit étre sans erreur de syntaxe
       #différencier, dans la liste d'erreur, les intructions 'using' en échec sur des modules inexistant
@@ -33,6 +43,9 @@ function Get-CodeMap {
   
     New-CodeMap @Parameters
 }
+
+$File='..\Test\SourceCode\CommandsDependencies.ps1'
+$Path =Convert-Path $File
 
 Get-CodeMap 
 $funcDigraph = [PSADigraph.FunctionReferenceDigraph]::New()
