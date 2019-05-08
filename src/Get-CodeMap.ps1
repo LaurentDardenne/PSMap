@@ -45,19 +45,17 @@ function Get-CodeMap {
 }
 
 $File='..\Test\SourceCode\CommandsDependencies.ps1'
-$Path =Convert-Path $File
 
-Get-CodeMap 
-$funcDigraph = [PSADigraph.FunctionReferenceDigraph]::New()
-$CodeMap=ConvertTo-FunctionObjectMap  $funcDigraph $sb
-#$CodeMap=ConvertTo-ObjectMap  $funcDigraph $File.Scriptblock -Exclude @('Evolution-Log') -Function
+$ScriptInformations=Get-CodeMap -Path $File
+
+$CodeMap=ConvertTo-FunctionObjectMap -CodeMap $ScriptInformations
 
 $viewer = New-MSaglViewer
 $g1 = New-MSaglGraph
 Set-MSaglGraphObject -Graph $g1 -inputobject $CodeMap -objectMap $ObjectMap
-$resultModal=Show-MSaglGraph $viewer $g1
+Show-MSaglGraph $viewer $g1 > $null
 
-#Reference count ( Metrics ?) TODO
-$vertices=ConvertTo-Vertex $funcDigraph $File.Scriptblock
-$Lookup=New-LookupTable $funcDigraph $Vertices
-$Lookup.GetEnumerator()|Sort-Object value -Descending
+#TODO Reference count ( Metrics ?) 
+# $vertices=ConvertTo-Vertex $funcDigraph $File.Scriptblock
+# $Lookup=New-LookupTable $funcDigraph $Vertices
+# $Lookup.GetEnumerator()|Sort-Object value -Descending
