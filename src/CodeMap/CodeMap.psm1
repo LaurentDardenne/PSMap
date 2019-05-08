@@ -1,4 +1,3 @@
-Add-type -Path ..\PSADigraph\bin\Debug\PSADigraph.dll
 Function New-CalledFunction{
     param(
          [Parameter(Mandatory=$True,position=0)]
@@ -79,43 +78,47 @@ Function ConvertTo-Vertex {
 }
   
 function ConvertTo-FunctionObjectMap {
-    param (
-        $CodeMap,
-  
-        [Switch] $Function,
-  
-        [string[]] $Exclude=@()
-    ) 
-    $Vertices= $CodeMap.Digraph.GetVertices() #Vertex=function name 
+  param (
+      # To retrieve the Vertices list build by a PSADigraph.FunctionReferenceDigraph instance.
+      $CodeMap,
+       
+      #To get only the functions.
+      [Switch] $Function,
+
+       #To exclude functions that generate noise in the display of the graph.
+      [string[]] $Exclude=@()
+  ) 
+   #Here, one  vertex is a the function name
+  $Vertices= $CodeMap.Digraph.GetVertices() 
    
-    foreach ($vertex in $Vertices.GetEnumerator() )
-    {  
-      if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
+  foreach ($vertex in $Vertices.GetEnumerator() )
+  {  
+    if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
+    { continue }
+
+    $CurrentFunctionName=$Vertex.Name    
+    if ($CurrentFunctionName -in $Exclude)
+    { continue }
+
+    Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
+    $Parent=$Vertex.Ast.Parent.Parent.Parent 
+    if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
+    {
+      Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
+      New-FunctionDefinition $Parent.Name -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
+    }
+    foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
+    {
+      if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
       { continue }
-  
-      $CurrentFunctionName=$Vertex.Name    
-      if ($CurrentFunctionName -in $Exclude)
+      
+      if ($CommandCalled.Name -in $Exclude)
       { continue }
-  
-      Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
-      $Parent=$Vertex.Ast.Parent.Parent.Parent 
-      if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
-      {
-        Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
-        New-FunctionDefinition $Parent.Name -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
-      }
-      foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
-      {
-        if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
-        { continue }
-        
-        if ($CommandCalled.Name -in $Exclude)
-        { continue }
-  
-        Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
-        New-CalledFunction -Name $CurrentFunctionName -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name)
-      }
-    }  
+
+      Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
+      New-CalledFunction -Name $CurrentFunctionName -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name)
+    }
+  }  
 }
 function New-LookupTable {
   #Contains the occurrence number of a function
