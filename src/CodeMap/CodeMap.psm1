@@ -79,46 +79,43 @@ Function ConvertTo-Vertex {
 }
   
 function ConvertTo-FunctionObjectMap {
-  param (
-      #AST Visitor
-      [PSADigraph.FunctionReferenceDigraph] $funcDigraph,
-
-      [System.Management.Automation.Language.ScriptBlockAst] $Ast,
-
-      [Switch] $Function,
-
-      [string[]] $Exclude=@()
-  ) 
-  $Vertices=ConvertTo-Vertex $funcDigraph $Ast
- 
-  foreach ($vertex in $Vertices.GetEnumerator() )
-  {  
-    if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
-    { continue }
-
-    $CurrentFunctionName=$Vertex.Name    
-    if ($CurrentFunctionName -in $Exclude)
-    { continue }
-
-    Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
-    $Parent=$Vertex.ast.parent.parent.parent 
-    if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
-    {
-      Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
-      New-FunctionDefinition $Parent.Name -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
-    }
-    foreach ($CommandCalled in $funcDigraph.GetNeighbors($Vertex) )
-    {
-      if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
+    param (
+        $CodeMap,
+  
+        [Switch] $Function,
+  
+        [string[]] $Exclude=@()
+    ) 
+    $Vertices= $CodeMap.Digraph.GetVertices() #Vertex=function name 
+   
+    foreach ($vertex in $Vertices.GetEnumerator() )
+    {  
+      if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
       { continue }
-      
-      if ($CommandCalled.Name -in $Exclude)
+  
+      $CurrentFunctionName=$Vertex.Name    
+      if ($CurrentFunctionName -in $Exclude)
       { continue }
-
-      Write-Debug "`tCall  $CommandCalled type $($CommandCalled.ast.Gettype().fullname)"
-      New-CalledFunction -Name $CurrentFunctionName -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name)
-    }
-  }  
+  
+      Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
+      $Parent=$Vertex.Ast.Parent.Parent.Parent 
+      if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
+      {
+        Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
+        New-FunctionDefinition $Parent.Name -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
+      }
+      foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
+      {
+        if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
+        { continue }
+        
+        if ($CommandCalled.Name -in $Exclude)
+        { continue }
+  
+        Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
+        New-CalledFunction -Name $CurrentFunctionName -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name)
+      }
+    }  
 }
 function New-LookupTable {
   #Contains the occurrence number of a function
@@ -148,22 +145,25 @@ function New-LookupTable {
 }
 
 Function New-CodeMap{
-  param(
-        [Parameter(Mandatory=$True,position=0)]
-      $Contener,
-        [Parameter(Mandatory=$True,position=1)]
-      $Ast,
-        [Parameter(Mandatory=$True,position=2)]
-      $DiGraph,
-        [Parameter(Mandatory=$True,position=3)]
-      $Dependencies
-  )
+    param(
+          [Parameter(Mandatory=$True,position=0)]
+        $Contener,
+          [Parameter(Mandatory=$True,position=1)]
+        $Ast,
+          [Parameter(Mandatory=$True,position=2)]
+        $DiGraph,
+          [Parameter(Mandatory=$True,position=3)]
+        $Dependencies
+    )
+    
+     #search the functions to fill the digraph
+    $Ast.Visit($Digraph)
   
-  [pscustomobject]@{
-    PSTypeName='CodeMap';
-    Contener=$Contener;
-    Ast=$Ast;
-    DiGraph=$DiGraph;
-    Dependencies=$Dependencies;
+    [pscustomobject]@{
+      PSTypeName='CodeMap';
+      Contener=$Contener;
+      Ast=$Ast;
+      DiGraph=$DiGraph;
+      Dependencies=$Dependencies;
     }
-}# New-CodeMap
+  }# New-CodeMap
