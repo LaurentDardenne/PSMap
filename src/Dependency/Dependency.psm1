@@ -132,18 +132,19 @@ function ConvertTo-FileInfo{
 
 Function New-Contener{
   param(
-           [Parameter(Mandatory=$True,position=0)]
-          $Path,
-           [Parameter(Mandatory=$True,position=1)]
-          $Type
+      [Parameter(Mandatory=$True,position=0)]
+    $Path,
+      [Parameter(Mandatory=$True,position=1)]
+    $Type
   )
   
-    [pscustomobject]@{
-      PSTypeName='Contener';
-      Path=$Path;
-      Type=$Type;
-     }
+  [pscustomobject]@{
+    PSTypeName='Contener';
+    FileInfo=ConvertTo-FileInfo $Path;
+    Type=$Type;
+    }
 }# New-Contener
+
 
 Function Get-StaticParameterBinder{
  param(
@@ -259,12 +260,12 @@ function Get-InformationModule{
                                         #todo use case: Import-module c:\temp\modules\my.dll
                                         # si c'est un module binaire ok, si c'est une dll dotnet sans déclaration de cmdlet
                                         #alors c'est une 'erreur' d'utilisation de IPMO comme IPMO File.sp1 peut l'être (confusion)
-                                        todo différencier nom d'un nom de chemin full ou relatif
-                                        $FileInfo=ConvertTo-FileInfo $StaticParameters.Name
-                                        if  (Test-ScriptName $FileInfo)
+                                        if  (Test-ScriptName $StaticParameters.Name)
                                         { 
+                                             #Retrieve the current path
+                                            $FileInfo=ConvertTo-FileInfo $StaticParameters.Name 
                                             #Import-module File.ps1 is equal to dotsource .ps1
-                                            New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
+                                            New-InformationScript -FileInfo $FileInfo.FullName -InvocationOperator 'Dot'
                                         }
                                         else 
                                         {   [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.Name) }
@@ -282,7 +283,7 @@ function Get-InformationModule{
                                         if  (Test-ScriptName $FileInfo)
                                         { 
                                            #Import-module File.ps1 is equal to dotsource .ps1
-                                           New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
+                                           New-InformationScript -FileInfo $FileInfo.FullName -InvocationOperator 'Dot'
                                         }
                                         else
                                         { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) }
@@ -417,5 +418,152 @@ Function New-DLLDependency{
   [pscustomobject]@{
     PSTypeName='DLLDependency'
     Name=$name
+  }
+}
+
+Function Read-Dependency {
+   [CmdletBinding(DefaultParameterSetName = "Path")]
+    param(
+        [ValidateNotNullOrEmpty()] 
+        [Parameter(Position=0, Mandatory=$true,ParameterSetName="Path")]
+      [string] $Path,
+
+        [ValidateNotNullOrEmpty()] 
+        [Parameter(Position=0, Mandatory=$true,ParameterSetName="CodeMap")]
+      $Contener,
+
+        [ValidateNotNullOrEmpty()] 
+        [Parameter(Position=1, Mandatory=$true,ParameterSetName="CodeMap")]
+      $Ast
+    )
+
+  try {
+   $EAP=$ErrorActionPreference
+   $ErrorActionPreference='Stop'
+   if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage')
+   { Throw "The Powershell language mode must be 'FullLanguage'"}
+  }catch {
+    $ErrorActionPreference=$EAP
+    Return
+  }
+
+  if ($PsCmdlet.ParameterSetName -eq "Path")
+  {  
+    $Contener=New-Contener -Path (Convert-Path $Path) -Type Script
+    $Ast=Get-Ast -FilePath $Path
+  }
+   # todo backup location ?
+  [Environment]::CurrentDirectory = $Contener.FileInfo.DirectoryName
+
+  $Commands=$Ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.CommandAst] },$true)
+  #TODO     &$function:bob  $function:bob.InvokeXXX()
+
+  $FunctionWithAssign=$ast.FindAll( { param($Ast) 
+    ($Ast -is [System.Management.Automation.Language.AssignmentStatementAst]) -and
+    ($Ast.Left.VariablePath.DriveName -eq 'function') -and 
+    ($Ast.Right.Expression.StaticType.fullname -eq 'System.Management.Automation.ScriptBlock')
+    },$true)
+   #$s.Left.VariablePath.UserPath -replace '^function:',''    
+
+  #Return Microsoft.PowerShell.Commands.ModuleSpecification
+  $Ast.ScriptRequirements.RequiredModules
+
+  foreach ($UsingStatement in $Ast.UsingStatements)
+  { Get-UsingStatementParameter $UsingStatement $global:ErrorsAst }
+
+  foreach ($Command in $Commands)
+  {
+    $CommandName=$Command.GetCommandName()
+    if ($null -ne $CommandName)
+    {
+        if ($CommandName -match 'Import-Module|IPMO')
+        { Get-InformationModule $Command -Contener $CurrentContener; Continue }
+    
+        if ($CommandName -match 'Start-Process|saps|start')
+        { Get-InformationProgram $Command ; Continue }
+    
+        try {
+          $FileName=ConvertTo-FileInfo $CommandName
+            #note : pour get-commande si une clause Using provoque une erreur alors sa propriété Scriptblock -eq $null
+          if ($Filename.Extension -eq '.ps1')
+          { Get-InformationScript $Command $FileName ; Continue }
+          else
+          { Write-Warning "todo Programm ? '$CommandName'" }
+        } catch {
+          Write-Warning "Is not a file name '$CommandName'"
+        }
+
+        if ($CommandName -match 'Add-Type')
+        { Get-InformationDLL $Command ; Continue }
+    }
+    if ($Command.CommandElements[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
+    {
+        $CmdInfo=Get-Command $Command.CommandElements[0].Value
+        # System.Management.Automation.AliasInfo
+        # System.Management.Automation.ApplicationInfo
+        # System.Management.Automation.CmdletInfo
+        # System.Management.Automation.ExternalScriptInfo
+        # System.Management.Automation.FunctionInfo
+        # System.Management.Automation.RemoteCommandInfo #Call Get-Command on a remote server
+        # System.Management.Automation.ScriptInfo
+        if ($CmdInfo -is [System.Management.Automation.ApplicationInfo])
+        {
+        $CmdInfo|
+            Select-Object Name,Source,@{ Name='ArgumentList';e={$Command.CommandElements[0].Parent.toString() -replace $Command.CommandElements[0].Value,''} }
+        Continue 
+        }
+    }
+    Write-Error "Foreach Commands: unknown case: '$($Command)'"; Continue
+  }
+
+  $Expressions=$Ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.InvokeMemberExpressionAst] },$true)
+  foreach ($Current in $Expressions)
+  {
+    if ($Current.Expression.Typename -match '(^System\.Reflection\.Assembly$|Reflection\.Assembly$)')
+    {
+        if ($Current.Member -match '(^UnsafeLoadFrom$|^Load$|^LoadFile$ |^LoadFrom$|^LoadWithPartialNameS)')
+        {
+            #TODO Load peut avoir des signatures ayant en 1er param un type différent de string
+            #LoadWithPartialName
+            #la classe AssemblyName peut déterminer ces cas
+            #todo si pas.dll alors c'est un nom court ('System.Windows.Forms')
+            # ou un nom long 'System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5cS61934eO89'
+            if ($Current.Arguments[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
+            {
+                $Value=$Current.Arguments[0].value
+                if ($Value -notmatch '\.dll$')
+                {
+                    try {
+                        Write-warning "not a dll"
+                        #The file name of the assembly is unknown here, it should be in the GAC
+                        New-NamespaceDependency -Assembly $Value
+                    }
+                    catch
+                    {
+                        #todo error or flag into type ‘NamespaceDependency' ?
+                        Write-Warning "DLL analyze impossible for : $Value"
+                    }
+                }
+                else
+                {
+                    New-DLLDependency $Current.Arguments[0].value
+                    [pscustomObject]@{
+                        PSTypeName='DLLDependency';
+                        Name=$name
+                    }
+                }
+            }
+            else
+            {
+                #TODO
+                # unresolved (informations)
+                Write-warning "$($current.Arguments[0].GetType().FullName)"
+            }
+        }
+    }
+    else
+    {
+    Write-Error "Foreach Expressions : unknown case : '$($Current)'"; Continue
+    }
   }
 }
