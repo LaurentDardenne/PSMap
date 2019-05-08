@@ -1,8 +1,3 @@
-#todo Suppose Language mode: FullLanguage
-#todo function definition through assignment:
-# $function:bob = {param ($name) Write-Host "Hi $name, I'm Bob!"}
-
-Import-Module PSAutograph
 Add-type -Path ..\PSADigraph\bin\Debug\PSADigraph.dll
 Function New-CalledFunction{
     param(
@@ -85,13 +80,16 @@ Function ConvertTo-Vertex {
   
 function ConvertTo-FunctionObjectMap {
   param (
-      $CodeMap,
+      #AST Visitor
+      [PSADigraph.FunctionReferenceDigraph] $funcDigraph,
+
+      [System.Management.Automation.Language.ScriptBlockAst] $Ast,
 
       [Switch] $Function,
 
       [string[]] $Exclude=@()
   ) 
-  $Vertices= $CodeMap.Digraph.GetVertices() #Vertex=function name 
+  $Vertices=ConvertTo-Vertex $funcDigraph $Ast
  
   foreach ($vertex in $Vertices.GetEnumerator() )
   {  
@@ -103,13 +101,13 @@ function ConvertTo-FunctionObjectMap {
     { continue }
 
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
-    $Parent=$Vertex.Ast.Parent.Parent.Parent 
+    $Parent=$Vertex.ast.parent.parent.parent 
     if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
     {
       Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
       New-FunctionDefinition $Parent.Name -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
     }
-    foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
+    foreach ($CommandCalled in $funcDigraph.GetNeighbors($Vertex) )
     {
       if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
       { continue }
@@ -117,7 +115,7 @@ function ConvertTo-FunctionObjectMap {
       if ($CommandCalled.Name -in $Exclude)
       { continue }
 
-      Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
+      Write-Debug "`tCall  $CommandCalled type $($CommandCalled.ast.Gettype().fullname)"
       New-CalledFunction -Name $CurrentFunctionName -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name)
     }
   }  
@@ -161,14 +159,11 @@ Function New-CodeMap{
       $Dependencies
   )
   
-   #search the functions to fill the digraph
-  $Ast.Visit($Digraph)
-
   [pscustomobject]@{
     PSTypeName='CodeMap';
     Contener=$Contener;
     Ast=$Ast;
     DiGraph=$DiGraph;
     Dependencies=$Dependencies;
-  }
+    }
 }# New-CodeMap
