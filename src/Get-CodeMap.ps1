@@ -5,46 +5,33 @@ function Get-CodeMap {
  # that are external to the current file
     param(
       [string] $Path
+      #todo permettre l'analyse d'un script bloc
   )  
     #Use the the fullpath name
     #todo how to define -Type ?
     #todo if path does not exist or need access rights
-    #add error Ast
     $Contener=New-Contener -Path (Convert-Path $Path) -Type Script
+    $Dependencies= Read-Dependency $Path
+    $AstParsing=Get-Ast -FilePath $Contener.FileInfo.FullName
 
     $Parameters=@{
-      Contener=$Contener
-      Ast=Get-Ast -FilePath $Contener.FileInfo.FullName
-      DiGraph=[PSADigraph.FunctionReferenceDigraph]::New()
-      Dependencies= Read-Dependency $Path
-      $AstError=$null
+      Contener=$Contener #duplication de données avec l'objet ASTparsing ?
+      Ast=$AstParsing.Ast
+      DiGraph=[PSADigraph.FunctionReferenceDigraph]::New() #TODO A l'origine le graph des F° est lié à un AST
+      Dependencies= $Dependencies
+       #L'AST doit étre sans erreur de syntaxe.
+       #Todo différencier, dans la liste d'erreur, les intructions 'using' en échec sur des modules inexistant
+      ErrorAst=$AstParsing.ErrorAst
     }
-      #todo doit étre sans erreur de syntaxe
-      #différencier, dans la liste d'erreur, les intructions 'using' en échec sur des modules inexistant
-      #try {
-        #create $global:ErrorsAst list
-        #using peut être créer des erreur mais l'ast est utilisable
-    #$Ast=Get-Ast -FilePath $Path
-        #  if ( (Get-Variable $ErrorsList).Value.Count -gt 0  )
-        #  {
-        #     $Er= New-Object System.Management.Automation.ErrorRecord(
-        #             (New-Object System.ArgumentException("The code contains syntax errors.")), 
-        #             "InvalidSyntax", 
-        #             "InvalidData",
-        #             "[AST]"
-        #            )  
-      
-        #     $PSCmdlet.WriteError($Er)
-        #  }
-        # } catch [System.ArgumentException] {
-        #   if ($_.FullyQualifiedErrorId -eq 'InvalidSyntax,Get-AST')
-        #   { Write-debug "$ErrorsAst"}
-        # }      
-  
     New-CodeMap @Parameters
 }
+Set-Location  G:\PS\PSMap
+Import-Module G:\PS\PSMap\src\CodeMap\CodeMap.psd1 -force
+Import-ModuleG:\PS\PSMap\src\Dependency\Dependency.psm1 -force
 
-$File='..\Test\SourceCode\CommandsDependencies.ps1'
+
+$File='.\Test\SourceCode\CommandsDependencies.ps1'
+#$File='.\Test\SourceCode\NestedCall\NestedCall.ps1'
 
 $ScriptInformations=Get-CodeMap -Path $File
 
