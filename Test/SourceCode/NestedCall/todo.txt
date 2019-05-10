@@ -1,17 +1,20 @@
 Call et Depend sont similaire pour un objet script
 Code (contenu) et container de code (contenant), container de container
 
-On doit connaitre le parent pour construictire le graph
+On doit connaitre le parent pour construire le graph
  - un script principal (parent) appel un script
  -une fonction (parent) du script (parent de la fonction) appel un script
 
 
 Si Objet script
  si ampersand (c'est un traitement)
+  -> on recherche les dépendances
   -> on ajoute un objet script 
       -> si dans une fonction ajoute un lien 'call' de l'objet fonction vers l'objet script
+  
 
 si dot (c'est un traitement + des définitions)
+-> on recherche les dépendances
   -> on ajoute un objet script 
       -> si dans une fonction ajoute un lien 'call'
     recherche les fonctions que ce script défini
