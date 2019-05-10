@@ -15,6 +15,7 @@ Using module Pester
 Using module @{ ModuleName="ester"; GUID='a699dea5-2c73-4616-a270-1f7abb777e71';ModuleVersion="4.7.3" }
 Using module @{ ModuleName="Pester"; ModuleVersion="4.7.3" }
 #Using module @{ ModuleName="Pester"} #todo error
+#Using Alias Type ShortcutName # not supported 
 
 # see https://github.com/PowerShell/PowerShell/blob/master/test/powershell/Language/Classes/scripting.Classes.using.tests.ps1#L205
 #
@@ -39,6 +40,7 @@ Using module 'C:\Program Files\WindowsPowerShell\Modules\Pester\4.7.3\Pester.psd
 
 Import-module c:\temp\modules\my.dll
 Import-module c:\temp\my.ps1
+#todo  Import-module c:\temp\One.ps1,c:\temp\Two.ps1
 
 import-module @{ ModuleName="AzureRM.Netcore"; ModuleVersion="0.12.0" }
 import-module @{ ModuleName = 'Computer'; ModuleVersion = '1.0'; GUID = 'a5d7c151-56cf-40a4-839f-0019898eb324' }
