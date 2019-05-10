@@ -14,101 +14,73 @@
 #     Idem pour une analyse  de DLL impossible 
 #     Certain appels peuvent ne pas être résolus
 
+#recherche des fichiers :
+# supposer que les chemins relatifs le sont par rapport au script principal peut ne pas fonctionner
+# rechercher ces dépendances dans une liste des fichiers établie avant l'analyse
+#on peut donc avoir des dépendances incomplètes, mais on peut savoir lequelles.
+
 #todo doit pointer sur le contexte de l'appelant
 $sbIsScriptDotSource={ ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript') }
 
 
 function Get-AST {
-  #from http://becomelotr.wordpress.com/2011/12/19/powershell-vnext-ast/
-    <#
-    
-    .Synopsis
-       Function to generate AST (Abstract Syntax Tree) for PowerShell code.
-    
-    .DESCRIPTION
-       This function will generate Abstract Syntax Tree for PowerShell code, either from file or direct input.
-       Abstract Syntax Tree is a new feature of PowerShell 3 that should make parsing PS code easier.
-       Because of nature of resulting object(s) it may be hard to read (different object types are mixed in output).
-    
-    .EXAMPLE
-       $AST = Get-AST -FilePath MyScript.ps1
-       $AST will contain syntax tree for MyScript script. Default are used for list of tokens ($Tokens) and errors ($Errors).
-    
-    .EXAMPLE
-       Get-AST -Input 'function Foo { param ($Foo) Write-Host $Foo }' -Tokens MyTokens -Errors MyErors | Format-Custom
-       Display function's AST in Custom View. $MyTokens contain all tokens, $MyErrors would be empty (no errors should be recorded).
-    
-    .INPUTS
-       System.String
-    
-    .OUTPUTS
-       System.Management.Automation.Languagage.Ast
-    
-    .NOTES
-       Just concept of function to work with AST. Needs a polish and shouldn't polute Global scope in a way it does ATM.
-    
-    #>
-    
-    [CmdletBinding(
-        DefaultParameterSetName = 'File'
-    )]
-    param (
-        # Path to file to process.
-        [Parameter(
-            Mandatory,
-            HelpMessage = 'Path to file to process',
-            ParameterSetName = 'File'
-        )]
-        [Alias('Path','PSPath')]
-        [ValidateScript({
-            if (Test-Path -Path $_ -ErrorAction SilentlyContinue) {
-                $true
-            } else {
-                throw "File does not exist!"
-            }
-        })]
-        [string]$FilePath,
-        
-        # Input string to process.
-        [Parameter(
-            Mandatory,
-            HelpMessage = 'String to process',
-            ParameterSetName = 'Input'
-    
-        )]
-        [Alias('Script','IS')]
-        [string]$InputScript,
-    
-        # Name of the list of Errors.
-        [Alias('EL')]
-        [string]$ErrorsList = 'ErrorsAst',
-        
-        # Name of the list of Tokens.
-        [Alias('TL')]
-        [string]$TokensList = 'Tokens'
-    )
-        New-Variable -Name $ErrorsList -Value $null -Scope Global -Force
-        New-Variable -Name $TokensList -Value $null -Scope Global -Force
-    
-    
-        switch ($psCmdlet.ParameterSetName) {
-            File {
-                $ParseFile = (Resolve-Path -Path $FilePath).ProviderPath
-                [System.Management.Automation.Language.Parser]::ParseFile(
-                    $ParseFile, 
-                    [ref](Get-Variable -Name $TokensList),
-                    [ref](Get-Variable -Name $ErrorsList)
-                )
-            }
-            Input {
-              [System.Management.Automation.Language.Parser]::ParseInput(
-                    $InputScript, 
-                    [ref](Get-Variable -Name $TokensList),
-                    [ref](Get-Variable -Name $ErrorsList)
-                )
-            }
-        }
+#from http://becomelotr.wordpress.com/2011/12/19/powershell-vnext-ast/
+<#
+
+.Synopsis
+    Function to generate AST (Abstract Syntax Tree) for PowerShell code.
+#>
+  
+  [CmdletBinding(DefaultParameterSetName = 'File')]
+  param (
+      # Path to file to process.
+      [Parameter(Mandatory,ParameterSetName = 'File'
+      )]
+      [Alias('Path','PSPath')]
+      [ValidateScript({
+          if (Test-Path -Path $_ -ErrorAction SilentlyContinue) {
+              $true
+          } else {
+              throw "File does not exist!"
+          }
+      })]
+      [string]$FilePath,
+      
+      # Input string to process.
+      [Parameter(Mandatory,ParameterSetName = 'Input')]
+      [Alias('Script','IS')]
+      [string]$InputScript
+  )
+
+  $Tokens=$null
+  $ErrorAst=$null
+
+  switch ($psCmdlet.ParameterSetName) {
+      File {
+          $ParseFile = (Resolve-Path -Path $FilePath).ProviderPath
+          $Ast= [System.Management.Automation.Language.Parser]::ParseFile(
+              $ParseFile, 
+              [ref]$Tokens,
+              [ref]$ErrorAst
+          )
+      }
+      Input {
+          $Ast=[System.Management.Automation.Language.Parser]::ParseInput(
+                $InputScript, 
+                [ref]$Tokens,
+                [ref]$ErrorAst
+          )
+      }
   }
+  return  [pscustomobject]@{
+            PSTypeName='AstParsing'
+            Ast=$Ast
+            Tokens=$Tokens
+            ErrorAst=$ErrorAst
+            FilePath=$FilePath
+            InputScript=$InputScript
+          }
+}
   
 function Test-ScriptName{
  param( [System.IO.FileInfo] $Path )
@@ -125,7 +97,6 @@ function ConvertTo-FileInfo{
     $ScriptPath=Convert-Path $Path -ErrorAction 'Stop'
   } catch [System.Management.Automation.ItemNotFoundException] {
      $ScriptPath=$Path
-     #$ScriptPath.Exists=$False
   }
   [System.IO.FileInfo]$ScriptPath
 }
@@ -135,6 +106,8 @@ Function New-Contener{
       [Parameter(Mandatory=$True,position=0)]
     $Path,
       [Parameter(Mandatory=$True,position=1)]
+      [ValidateSet('Script','Module','Scriptblock')]
+      [ValidateTrustedData]
     $Type
   )
   
@@ -142,7 +115,7 @@ Function New-Contener{
     PSTypeName='Contener';
     FileInfo=ConvertTo-FileInfo $Path;
     Type=$Type;
-    }
+  }
 }# New-Contener
 
 
@@ -225,7 +198,7 @@ function Get-UsingStatementParameter{
                      [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.Name) 
                    }
                    else {
-                     write-warning "todo -> use assert ParserStrings.UsingStatementNotSupported);"
+                     write-warning "This syntax of the 'using' statement is not supported." # Alias
                    }
              }
 
@@ -248,7 +221,7 @@ function Get-InformationModule{
     switch ($TypeName)
     {
         'ArrayLiteralAst'      {
-                                    #todo on peut avoir Import-module File.ps1, File2.ps1 :/
+                                    #todo Import-module File.ps1, File2.ps1
                                     Foreach ($Name in $Commandelement.Elements.value)
                                     { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Name) }
                                }
@@ -304,17 +277,13 @@ function New-InformationScript{
     [System.IO.FileInfo] $FileInfo,
     [string] $InvocationOperator
   )
-  #todo must be managed by the caller
-  # if ($InvocationOperator -eq 'Unknown')
-  # {
-  #     #By default 
-  #     # this statement : .\One.ps1
-  #     # is equal to &'.\One.ps1'      
-  #     $InvocationOperator='Ampersand'
-  # }
   return [pscustomobject]@{
             PSTypeName='InformationScript';
             FileInfo=$FileInfo;
+            #By default 
+            # this statement : .\One.ps1
+            # is equal to &'.\One.ps1'                 
+            # 'Unknown' -eq 'Ampersand'
             InvocationOperator=$InvocationOperator
           }
 }
@@ -442,15 +411,17 @@ Function Read-Dependency {
    $ErrorActionPreference='Stop'
    if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage')
    { Throw "The Powershell language mode must be 'FullLanguage'"}
-  }catch {
-    $ErrorActionPreference=$EAP
-    Return
+  } catch {
+     Return
+  } finally {
+     $ErrorActionPreference=$EAP
   }
-
+  
   if ($PsCmdlet.ParameterSetName -eq "Path")
   {  
     $Contener=New-Contener -Path (Convert-Path $Path) -Type Script
-    $Ast=Get-Ast -FilePath $Path
+    $AstParsing=Get-Ast -FilePath $Path
+    $Ast=$AstParsing.Ast
   }
    # todo backup location ?
   [Environment]::CurrentDirectory = $Contener.FileInfo.DirectoryName
@@ -485,12 +456,12 @@ Function Read-Dependency {
         try {
           $FileName=ConvertTo-FileInfo $CommandName
             #note : pour get-commande si une clause Using provoque une erreur alors sa propriété Scriptblock -eq $null
-          if ($Filename.Extension -eq '.ps1')
+          if (Test-ScriptName $Filename)
           { Get-InformationScript $Command $FileName ; Continue }
           else
-          { Write-Warning "todo Programm ? '$CommandName'" }
+          { Write-Debug "This command is not taken into consideration '$CommandName'" }
         } catch {
-          Write-Warning "Is not a file name '$CommandName'"
+          Write-Error "Exception during converting a file name '$CommandName' : $_"
         }
 
         if ($CommandName -match 'Add-Type')
@@ -508,13 +479,23 @@ Function Read-Dependency {
         # System.Management.Automation.ScriptInfo
         if ($CmdInfo -is [System.Management.Automation.ApplicationInfo])
         {
-        $CmdInfo|
+          $CmdInfo|
             Select-Object Name,Source,@{ Name='ArgumentList';e={$Command.CommandElements[0].Parent.toString() -replace $Command.CommandElements[0].Value,''} }
-        Continue 
+          Continue 
         }
     }
-    Write-Error "Foreach Commands: unknown case: '$($Command)'"; Continue
+    Write-Warning "Foreach Commands: unknown case: '$($Command)'"; Continue
   }
+
+#TODo
+  #Contenu
+  # [System.Management.Automation.Language.ScriptBlockAst] 
+
+  #Appel
+  # [System.Management.Automation.Language.ScriptBlockExpressionAst]
+
+  #Affectation
+  # [System.Management.Automation.Language.AssignmentStatementAst]  $var= [System.Management.Automation.Language.CommandExpressionAst] 
 
   $Expressions=$Ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.InvokeMemberExpressionAst] },$true)
   foreach ($Current in $Expressions)
@@ -556,7 +537,8 @@ Function Read-Dependency {
             else
             {
                 #TODO
-                # unresolved (informations)
+                # unresolved (informations) Quoi, où, raison ?
+                # dépendance trouvée mais fichier introuvable.
                 Write-warning "$($current.Arguments[0].GetType().FullName)"
             }
         }
@@ -567,3 +549,4 @@ Function Read-Dependency {
     }
   }
 }
+#Export-ModuleMember Get-Ast Internal
