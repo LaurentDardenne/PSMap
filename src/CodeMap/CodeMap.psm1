@@ -155,8 +155,10 @@ Function New-CodeMap{
         $Ast,
           [Parameter(Mandatory=$True,position=2)]
         $DiGraph,
-          [Parameter(Mandatory=$True,position=3)]
-        $Dependencies
+          [Parameter(position=3)]
+        $Dependencies,
+          [Parameter(position=4)]
+        $ErrorAst
     )
     
      #search the functions to fill the digraph
@@ -168,5 +170,6 @@ Function New-CodeMap{
       Ast=$Ast;
       DiGraph=$DiGraph;
       Dependencies=$Dependencies;
+      ErrorAst=$ErrorAst
     }
   }# New-CodeMap
