@@ -25,21 +25,27 @@ function Get-CodeMap {
     }
     New-CodeMap @Parameters
 }
+
+IPMo G:\PS\PSAutograph\src\PSAutograph.psd1
+
 Set-Location  G:\PS\PSMap
 Import-Module G:\PS\PSMap\src\CodeMap\CodeMap.psd1 -force
-Import-ModuleG:\PS\PSMap\src\Dependency\Dependency.psm1 -force
+Import-Module G:\PS\PSMap\src\Dependency\Dependency.psm1 -force
 
 
 $File='.\Test\SourceCode\CommandsDependencies.ps1'
 #$File='.\Test\SourceCode\NestedCall\NestedCall.ps1'
+$file='.\Test\SourceCode\Imbrication1.ps1'
+#$file='.\Test\SourceCode\Imbrication.ps1'
 
-$ScriptInformations=Get-CodeMap -Path $File
+$CodeMap=Get-CodeMap -Path $File
 
-$CodeMap=ConvertTo-FunctionObjectMap -CodeMap $ScriptInformations
+todo considére un appel de script comme une fonction...
+$FunctionGraph=ConvertTo-FunctionObjectMap -CodeMap $CodeMap
 
 $viewer = New-MSaglViewer
 $g1 = New-MSaglGraph
-Set-MSaglGraphObject -Graph $g1 -inputobject $CodeMap -objectMap $ObjectMap
+Set-MSaglGraphObject -Graph $g1 -inputobject $FunctionGraph -objectMap $ObjectMap
 Show-MSaglGraph $viewer $g1 > $null
 
 #TODO Reference count ( Metrics ?) 
