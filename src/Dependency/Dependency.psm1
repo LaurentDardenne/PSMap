@@ -107,7 +107,6 @@ Function New-Contener{
     $Path,
       [Parameter(Mandatory=$True,position=1)]
       [ValidateSet('Script','Module','Scriptblock')]
-      [ValidateTrustedData]
     $Type
   )
   
@@ -447,6 +446,9 @@ Function Read-Dependency {
     $CommandName=$Command.GetCommandName()
     if ($null -ne $CommandName)
     {
+        if ($CommandName -match 'Update-FormatData|Update-TypeData')
+        { Write-Warning "todo ETS" }# Get-InformationETS $Command -Contener $CurrentContener; Continue }  #todo
+
         if ($CommandName -match 'Import-Module|IPMO')
         { Get-InformationModule $Command -Contener $CurrentContener; Continue }
     
@@ -455,7 +457,7 @@ Function Read-Dependency {
     
         try {
           $FileName=ConvertTo-FileInfo $CommandName
-            #note : pour get-commande si une clause Using provoque une erreur alors sa propriété Scriptblock -eq $null
+            #note : pour get-commande (SMA.ExternalScriptInfo) si une clause Using provoque une erreur alors sa propriété Scriptblock -eq $null
           if (Test-ScriptName $Filename)
           { Get-InformationScript $Command $FileName ; Continue }
           else
@@ -469,20 +471,20 @@ Function Read-Dependency {
     }
     if ($Command.CommandElements[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
     {
-        $CmdInfo=Get-Command $Command.CommandElements[0].Value
-        # System.Management.Automation.AliasInfo
-        # System.Management.Automation.ApplicationInfo
-        # System.Management.Automation.CmdletInfo
-        # System.Management.Automation.ExternalScriptInfo
-        # System.Management.Automation.FunctionInfo
-        # System.Management.Automation.RemoteCommandInfo #Call Get-Command on a remote server
-        # System.Management.Automation.ScriptInfo
-        if ($CmdInfo -is [System.Management.Automation.ApplicationInfo])
-        {
-          $CmdInfo|
+       try {
+         $CmdInfo=Get-Command $Command.CommandElements[0].Value -ErrorAction Stop
+         #TODO  System.Management.Automation.AliasInfo
+         # System.Management.Automation.FunctionInfo -> digraph
+         if ($CmdInfo -is [System.Management.Automation.ApplicationInfo])
+         {
+           $CmdInfo|
             Select-Object Name,Source,@{ Name='ArgumentList';e={$Command.CommandElements[0].Parent.toString() -replace $Command.CommandElements[0].Value,''} }
-          Continue 
-        }
+           Continue 
+         }
+         #todo System.Management.Automation.CmdletInfo association avec son conteneur
+       } catch [System.Management.Automation.CommandNotFoundException] {
+        Write-Debug "$_ "
+       }
     }
     Write-Warning "Foreach Commands: unknown case: '$($Command)'"; Continue
   }
