@@ -91,7 +91,7 @@ function ConvertTo-FunctionObjectMap {
    #Here, one  vertex is a the function name
   $Vertices= $CodeMap.Digraph.GetVertices() 
    
-  foreach ($vertex in $Vertices.GetEnumerator() )
+  foreach ($vertex in $Vertices )#.GetEnumerator() )
   {  
     if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
     { continue }
@@ -101,7 +101,8 @@ function ConvertTo-FunctionObjectMap {
     { continue }
 
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
-    $Parent=$Vertex.Ast.Parent.Parent.Parent 
+    $Parent=$Vertex.Ast.Parent.Parent.Parent
+    Write-Debug "`tparent  $($Parent.Gettype().fullname)" 
     if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
     {
       Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
@@ -109,6 +110,7 @@ function ConvertTo-FunctionObjectMap {
     }
     foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
     {
+      Write-Debug "Neighbors $CommandCalled" 
       if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
       { continue }
       
@@ -120,6 +122,16 @@ function ConvertTo-FunctionObjectMap {
     }
   }  
 }
+
+function ConvertTo-DependencyObjectMap{
+  #todo 
+  param()
+  #Dll
+  #module
+  #script
+  #ps1mxl
+}
+
 function New-LookupTable {
   #Contains the occurrence number of a function
   param( 
@@ -173,3 +185,5 @@ Function New-CodeMap{
       ErrorAst=$ErrorAst
     }
   }# New-CodeMap
+
+Export-ModuleMember -Function * -Variable 'ObjectMap'
