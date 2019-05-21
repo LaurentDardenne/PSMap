@@ -71,7 +71,7 @@ $O=New-Module -ScriptBlock { function Hello {"Hello!"} } -AsCustomObject
 . .\MonScriptDot.ps1
 & .\MonScriptAmperSand.ps1
 
-. C:\temp\Modules\MonScriptDor.ps1
+. C:\temp\Modules\MonScriptDot.ps1
 & C:\temp\Modules\MonScriptAmperSand.ps1
 
 . ..\MonScriptDot.ps1
