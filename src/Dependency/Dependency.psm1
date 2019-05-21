@@ -389,6 +389,108 @@ Function New-DLLDependency{
   }
 }
 
+function ConvertTo-AssemblyDependency {
+  param ($Expression)
+
+  if ($Current.Expression.Typename -match '(^System\.Reflection\.Assembly$|Reflection\.Assembly$)')
+  {
+      if ($Current.Member -match '(^UnsafeLoadFrom$|^Load$|^LoadFile$ |^LoadFrom$|^LoadWithPartialNameS)')
+      {
+          #TODO Load peut avoir des signatures ayant en 1er param un type différent de string
+          #LoadWithPartialName
+          #la classe AssemblyName peut déterminer ces cas
+          #todo si pas.dll alors c'est un nom court ('System.Windows.Forms')
+          # ou un nom long 'System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5cS61934eO89'
+          if ($Current.Arguments[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
+          {
+              $Value=$Current.Arguments[0].value
+              if ($Value -notmatch '\.dll$')
+              {
+                  try {
+                      Write-warning "not a dll"
+                      #The file name of the assembly is unknown here, it should be in the GAC
+                      New-NamespaceDependency -Assembly $Value
+                  }
+                  catch
+                  {
+                      #todo error or flag into type ‘NamespaceDependency' ?
+                      Write-Warning "DLL analyze impossible for : $Value"
+                  }
+              }
+              else
+              {
+                  New-DLLDependency $Current.Arguments[0].value
+                  [pscustomObject]@{
+                      PSTypeName='DLLDependency';
+                      Name=$name
+                  }
+              }
+          }
+          else
+          {
+              #TODO
+              # unresolved (informations) Quoi, où, raison ?
+              # dépendance trouvée mais fichier introuvable.
+              Write-warning "$($current.Arguments[0].GetType().FullName)"
+          }
+      }
+  }
+  else
+  {
+      Write-Error "Foreach Expressions : unknown case : '$($Current)'"
+    Continue 
+  }
+}
+
+function ConvertTo-CommandDependency {
+  param ($Command)
+
+  $CommandName=$Command.GetCommandName()
+  if ($null -ne $CommandName)
+  {
+      if ($CommandName -match 'Update-FormatData|Update-TypeData')
+      { Write-Warning "todo ETS" }# Get-InformationETS $Command -Contener $CurrentContener; Continue }  #todo
+
+      if ($CommandName -match 'Import-Module|IPMO')
+      { Get-InformationModule $Command -Contener $CurrentContener; Continue }
+  
+      if ($CommandName -match 'Start-Process|saps|start')
+      { Get-InformationProgram $Command ; Continue }
+  
+      try {
+        $FileName=ConvertTo-FileInfo $CommandName
+          #note : pour get-commande (SMA.ExternalScriptInfo) si une clause Using provoque une erreur alors sa propriété Scriptblock -eq $null
+        if (Test-ScriptName $Filename)
+        { Get-InformationScript $Command $FileName ; Continue }
+        else
+        { Write-Debug "This command is not taken into consideration '$CommandName'" }
+      } catch {
+        Write-Error "Exception during converting a file name '$CommandName' : $_"
+      }
+
+      if ($CommandName -match 'Add-Type')
+      { Get-InformationDLL $Command ; Continue }
+  }
+  if ($Command.CommandElements[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
+  {
+      try {
+        $CmdInfo=Get-Command $Command.CommandElements[0].Value -ErrorAction Stop
+        #TODO  System.Management.Automation.AliasInfo
+        # System.Management.Automation.FunctionInfo -> digraph
+        if ($CmdInfo -is [System.Management.Automation.ApplicationInfo])
+        {
+          $CmdInfo|
+          Select-Object Name,Source,@{ Name='ArgumentList';e={$Command.CommandElements[0].Parent.toString() -replace $Command.CommandElements[0].Value,''} }
+          Continue 
+        }
+        #todo System.Management.Automation.CmdletInfo association avec son conteneur
+      } catch [System.Management.Automation.CommandNotFoundException] {
+      Write-Debug "$_ "
+      }
+  }
+  Write-Warning "Foreach Commands: unknown case: '$($Command)'"; Continue
+}
+
 Function Read-Dependency {
    [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
@@ -436,60 +538,17 @@ Function Read-Dependency {
    #$s.Left.VariablePath.UserPath -replace '^function:',''    
 
   #Return Microsoft.PowerShell.Commands.ModuleSpecification
-  $Ast.ScriptRequirements.RequiredModules
+  $RequiredModules=$Ast.ScriptRequirements.RequiredModules
+  if ($null -ne $RequiredModules)
+  { $RequiredModules }
 
   foreach ($UsingStatement in $Ast.UsingStatements)
   { Get-UsingStatementParameter $UsingStatement $global:ErrorsAst }
 
   foreach ($Command in $Commands)
-  {
-    $CommandName=$Command.GetCommandName()
-    if ($null -ne $CommandName)
-    {
-        if ($CommandName -match 'Update-FormatData|Update-TypeData')
-        { Write-Warning "todo ETS" }# Get-InformationETS $Command -Contener $CurrentContener; Continue }  #todo
+  {  ConvertTo-CommandDependency -Command $Command }
 
-        if ($CommandName -match 'Import-Module|IPMO')
-        { Get-InformationModule $Command -Contener $CurrentContener; Continue }
-    
-        if ($CommandName -match 'Start-Process|saps|start')
-        { Get-InformationProgram $Command ; Continue }
-    
-        try {
-          $FileName=ConvertTo-FileInfo $CommandName
-            #note : pour get-commande (SMA.ExternalScriptInfo) si une clause Using provoque une erreur alors sa propriété Scriptblock -eq $null
-          if (Test-ScriptName $Filename)
-          { Get-InformationScript $Command $FileName ; Continue }
-          else
-          { Write-Debug "This command is not taken into consideration '$CommandName'" }
-        } catch {
-          Write-Error "Exception during converting a file name '$CommandName' : $_"
-        }
-
-        if ($CommandName -match 'Add-Type')
-        { Get-InformationDLL $Command ; Continue }
-    }
-    if ($Command.CommandElements[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
-    {
-       try {
-         $CmdInfo=Get-Command $Command.CommandElements[0].Value -ErrorAction Stop
-         #TODO  System.Management.Automation.AliasInfo
-         # System.Management.Automation.FunctionInfo -> digraph
-         if ($CmdInfo -is [System.Management.Automation.ApplicationInfo])
-         {
-           $CmdInfo|
-            Select-Object Name,Source,@{ Name='ArgumentList';e={$Command.CommandElements[0].Parent.toString() -replace $Command.CommandElements[0].Value,''} }
-           Continue 
-         }
-         #todo System.Management.Automation.CmdletInfo association avec son conteneur
-       } catch [System.Management.Automation.CommandNotFoundException] {
-        Write-Debug "$_ "
-       }
-    }
-    Write-Warning "Foreach Commands: unknown case: '$($Command)'"; Continue
-  }
-
-#TODo
+#TODO
   #Contenu
   # [System.Management.Automation.Language.ScriptBlockAst] 
 
@@ -501,54 +560,7 @@ Function Read-Dependency {
 
   $Expressions=$Ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.InvokeMemberExpressionAst] },$true)
   foreach ($Current in $Expressions)
-  {
-    if ($Current.Expression.Typename -match '(^System\.Reflection\.Assembly$|Reflection\.Assembly$)')
-    {
-        if ($Current.Member -match '(^UnsafeLoadFrom$|^Load$|^LoadFile$ |^LoadFrom$|^LoadWithPartialNameS)')
-        {
-            #TODO Load peut avoir des signatures ayant en 1er param un type différent de string
-            #LoadWithPartialName
-            #la classe AssemblyName peut déterminer ces cas
-            #todo si pas.dll alors c'est un nom court ('System.Windows.Forms')
-            # ou un nom long 'System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5cS61934eO89'
-            if ($Current.Arguments[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
-            {
-                $Value=$Current.Arguments[0].value
-                if ($Value -notmatch '\.dll$')
-                {
-                    try {
-                        Write-warning "not a dll"
-                        #The file name of the assembly is unknown here, it should be in the GAC
-                        New-NamespaceDependency -Assembly $Value
-                    }
-                    catch
-                    {
-                        #todo error or flag into type ‘NamespaceDependency' ?
-                        Write-Warning "DLL analyze impossible for : $Value"
-                    }
-                }
-                else
-                {
-                    New-DLLDependency $Current.Arguments[0].value
-                    [pscustomObject]@{
-                        PSTypeName='DLLDependency';
-                        Name=$name
-                    }
-                }
-            }
-            else
-            {
-                #TODO
-                # unresolved (informations) Quoi, où, raison ?
-                # dépendance trouvée mais fichier introuvable.
-                Write-warning "$($current.Arguments[0].GetType().FullName)"
-            }
-        }
-    }
-    else
-    {
-    Write-Error "Foreach Expressions : unknown case : '$($Current)'"; Continue
-    }
-  }
+  { ConvertTo-AssemblyDependency -Expression $Current }
+
 }
 #Export-ModuleMember Get-Ast Internal
