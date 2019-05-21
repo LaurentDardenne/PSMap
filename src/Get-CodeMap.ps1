@@ -10,9 +10,11 @@ function Get-CodeMap {
     #Use the the fullpath name
     #todo how to define -Type ?
     #todo if path does not exist or need access rights
+
     $Contener=New-Contener -Path (Convert-Path $Path) -Type Script
-    $Dependencies= Read-Dependency $Path
     $AstParsing=Get-Ast -FilePath $Contener.FileInfo.FullName
+    $Dependencies= Read-Dependency -Contener $Contener -Ast $AstParsing
+
 
     $Parameters=@{
       Contener=$Contener #duplication de données avec l'objet ASTparsing ?
@@ -26,7 +28,7 @@ function Get-CodeMap {
     New-CodeMap @Parameters
 }
 
-IPMo G:\PS\PSAutograph\src\PSAutograph.psd1
+IPMO G:\PS\PSAutograph\src\PSAutograph.psd1
 
 Set-Location  G:\PS\PSMap
 Import-Module G:\PS\PSMap\src\CodeMap\CodeMap.psd1 -force
