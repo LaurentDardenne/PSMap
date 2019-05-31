@@ -149,3 +149,5 @@ $exe = "H:\backup\scripts\vshadow.exe“
 $function:bob = {param ($name) Write-Host "Hi $name, I'm Bob!"}
 
 #todo dépendances dans les fichiers de types .ps1xml (ETS)
+
+#todo une classe PS contient des définitions de fonctions...
