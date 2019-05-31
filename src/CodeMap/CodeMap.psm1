@@ -102,7 +102,7 @@ function ConvertTo-FunctionObjectMap {
 
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
     $Parent=$Vertex.Ast.Parent.Parent.Parent
-    Write-Debug "`tparent  $($Parent.Gettype().fullname)" 
+    if ($null -ne $Parent) { Write-Debug "`tparent  $($Parent.Gettype().fullname)" }
     if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
     {
       Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
