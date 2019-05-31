@@ -491,6 +491,8 @@ function ConvertTo-CommandDependency {
   Write-Warning "Foreach Commands: unknown case: '$($Command)'"; Continue
 }
 
+#Les dépendances constitue un graphe et pas un arbre.
+#todo On doit éviter de reparser un fichier déjà parsé 
 Function Read-Dependency {
    [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
