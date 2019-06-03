@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>DgmlImage</id>
+    <version>1.0.0.1</version>
+    <authors>Chris Lovett</authors>
+    <owners>Chris Lovett</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://microsoft.mit-license.org/</licenseUrl>
+    <iconUrl>https://chrislovett.gallerycdn.vsassets.io/extensions/chrislovett/dgmlpowertools/1.2/1482138140669/Microsoft.VisualStudio.Services.Icons.Default</iconUrl>
+    <description>DgmlImage is a command line tool for generating images from DGML graphs</description>
+    <releaseNotes></releaseNotes>
+    <copyright>© Microsoft Corporation.  All rights reserved.</copyright>
+    <tags>DGML</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework4.6.1" />
+    </dependencies>
+  </metadata>
+</package>
