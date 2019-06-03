@@ -1,0 +1,2 @@
+https://www.nuget.org/packages/DgmlImage/
+https://marketplace.visualstudio.com/items?itemName=ChrisLovett.DgmlPowerTools2017
