@@ -1,0 +1,98 @@
+
+TODO
+Défini le graph des dépendances avec un visiteur à partir d'un point d'entrée (script.module).
+
+
+USAGE :
+compréhension du code (soit un folder , soit une liste)
+Métriques
+graphe de dépendances fichier et code
+
+Dépendances externe qui dépend de qui         ( 1 seul lien orienté entre objets. Notion de LOCALISATION)
+Dépendances interne qui appel qui                   ( + liens de type I/O)
+                                         qui définit qui                   (imbrication de fonction 1 ->n )
+                                        (1 script utilisant : 1 module, 1 prg ou une ressource externe)
+
+Affichage des fichiers de la solution : dépendances/recensement
+Info sur les objets
+
+Dépendances visu 'haut' niveau (livraison et ordre de chargement (?)
+Appel de code , visu 'bas' Niveau
+
+Liste des fichiers, clé= Path
+si répertoire possibilité de nom dupliqués
+
+1 recherche dans le FS
+2 recherches les occurrences des noms dans le code soit parsing, soit via les cmd de l'AST ( set/ipmo).
+
+Fichier constituant une solution (autoload, GAC, Profile,PsModulePath, prerequis absent)
+Fichier dépend de fichier
+Fichier qui contient du code
+Code qui appelle du code (peut être dans 1 autre fichier).
+
+Information à collecter
+l'info de version dépend de l'arbo des folders de modules
+
+ps1 : chemin,nom, version, prerequis
+psd1 : chemin,nom, version, prerequis, all manifest
+psm1 : chemin,nom, prerequis
+
+Analyse des possibilités de IPMO.
+
+On crée les données du graph, export et convert
+Certains élément seront référencé par l'AST mais inconnue (seulement à l'exécution) ou le fichier les déclarant est introuvable.
+
+Extension 
+Ps1
+Psm1
+Psd1
+Psxml
+Pscc
+Dll
+Xaml ?
+
+Erreur : référence dans le code mais inconnu dans le contexte ou introuvable sur le disque
+
+Todo : Duplication d’info (path)
+
+
+Call et Depend sont similaire pour un objet script
+Code (contenu) et container de code (contenant), container de container
+
+On doit connaitre le parent pour construire le graph
+ - un script principal (parent) appel un script
+ - une fonction (parent) du script (parent de la fonction) appel un script
+
+Contener de code = fichier contenant du code
+Script 
+Module (script ou Dll)
+
+Objet définissant du code, un AST :
+Script 
+Module 
+Function 
+Scriptblock
+note: ils peuvent être imbriqués.
+
+ un conteneur (Script,Module) dépend (via un appel dans le code) d'autres conteneurs.
+ un conteneur défini des fonctions (filtre)
+ un conteneur appel un conteneur.
+
+Une dépendance définie les relations des parties d'un tout.
+Dans le code une dépendances née lors d'un appel ou d'une déclaration d'un conteneur.
+
+Les relations 'Call' et 'Dépend' sont identiques pour un objet script (ou autre).
+Ex de code :
+    Script2 déclare une fonction F2
+    Script1 dépend de Script2
+    
+La direction d'un lien 'Dépend' va de Script1 vers Script2
+La direction d'un lien 'Appel' va de Script1 vers Script2
+La direction d'un lien 'Appel' va de Script1 vers F2 (Script1 étant ici implicite car c'est le Main/point d'entrée) 
+La direction d'un lien 'Définit' va de Script2 vers F2
+
+Les relations 'Call' et 'Dépend' prennent corps dans l'usage que l'on fait du lien qui les relie.
+Les dépendances permettent de recencer tout les fichiers prérequis.
+Les appels permettent de visualiser les relations dans le code.
+Ex: après la recopie d'un ou + fichiers dans un seul script, les relations dans le code restent identique mais la liste des fichiers prérequis peut être réduite.
+On peut vouloir visualiser l'une ou l'autre de ces relations.
