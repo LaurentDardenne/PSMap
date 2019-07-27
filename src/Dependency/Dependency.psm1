@@ -237,7 +237,7 @@ function Get-InformationModule{
                                              #Retrieve the current path
                                             $FileInfo=ConvertTo-FileInfo $StaticParameters.Name 
                                             #Import-module File.ps1 is equal to dotsource .ps1
-                                            New-InformationScript -FileInfo $FileInfo.FullName -InvocationOperator 'Dot'
+                                            New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
                                         }
                                         else 
                                         {   [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.Name) }
@@ -255,7 +255,7 @@ function Get-InformationModule{
                                         if  (Test-ScriptName $FileInfo)
                                         { 
                                            #Import-module File.ps1 is equal to dotsource .ps1
-                                           New-InformationScript -FileInfo $FileInfo.FullName -InvocationOperator 'Dot'
+                                           New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
                                         }
                                         else
                                         { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) }
@@ -295,7 +295,7 @@ function Get-InformationScript{
   #$Command.CommandElement.Count -eq 0  without parameter
   #$Command.CommandElement.Count -gt 0  with parameters
   #New-InformationScript -Name $Command.CommandElements[0].Value -InvocationOperator $Command.InvocationOperator
-  New-InformationScript -FileInfo $FileInfo.FullName -InvocationOperator $Command.InvocationOperator
+  New-InformationScript -FileInfo $FileInfo -InvocationOperator $Command.InvocationOperator
 }
 
 function Get-InformationDLL{
@@ -458,10 +458,10 @@ function ConvertTo-CommandDependency {
       { Get-InformationProgram $Command ; Continue }
   
       try {
-        $FileName=ConvertTo-FileInfo $CommandName
+        $FileInfo=ConvertTo-FileInfo $CommandName
           #note : pour get-commande (SMA.ExternalScriptInfo) si une clause Using provoque une erreur alors sa propriété Scriptblock -eq $null
-        if (Test-ScriptName $Filename)
-        { Get-InformationScript $Command $FileName ; Continue }
+        if (Test-ScriptName $FileInfo)
+        { Get-InformationScript $Command $FileInfo ; Continue }
         else
         { Write-Debug "This command is not taken into consideration '$CommandName'" }
       } catch {
@@ -493,6 +493,7 @@ function ConvertTo-CommandDependency {
 
 #Les dépendances constitue un graphe et pas un arbre.
 #todo On doit éviter de reparser un fichier déjà parsé 
+#todo Contener or CodeContener
 Function Read-Dependency {
    [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
@@ -566,3 +567,6 @@ Function Read-Dependency {
 
 }
 #Export-ModuleMember Get-Ast Internal
+
+#todo Read-Dependency doit-elle émettre des conteneurs ou des objets PS/AST ?
+#retrouver la liste des cmdlets d'une dll : (get-assemblies).ExportedTypes|? {$_.IsSubclassOf([System.Management.Automation.PSCmdlet])}
