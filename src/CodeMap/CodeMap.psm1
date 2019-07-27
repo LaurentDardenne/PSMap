@@ -2,7 +2,11 @@ Function New-CalledFunction{
     param(
          [Parameter(Mandatory=$True,position=0)]
         $Name,
-         [Parameter(position=1)]
+        
+        [Parameter(Mandatory=$True,position=1)]
+        $CodeContener,
+
+         [Parameter(position=0)]
         $CalledFunction=$null
     )
 
@@ -10,6 +14,7 @@ Function New-CalledFunction{
     [pscustomObject]@{
       PSTypeName='FunctionDependency';
       Name=$Name;
+      Contener=$CodeContener;
       CalledFunction=$CalledFunction
     }
 }
@@ -17,7 +22,11 @@ Function New-FunctionDefinition{
     param(
          [Parameter(Mandatory=$True,position=0)]
         $Name,
-         [Parameter(position=1)]
+
+        [Parameter(Mandatory=$True,position=1)]
+        $CodeContener,
+
+        [Parameter(position=2)]
          $FunctionDefined=$null
     )
   
@@ -25,6 +34,7 @@ Function New-FunctionDefinition{
     [pscustomObject]@{
       PSTypeName='FunctionDefinition';
       Name=$Name;
+      Contener=$Contener;
       FunctionDefined=$FunctionDefined
     }
 }
@@ -33,7 +43,7 @@ Function New-FileDependency{
          [Parameter(Mandatory=$True,position=0)]
         $Name,
          [Parameter(position=1)]
-         $Usedfile=$null
+        $Usedfile=$null
     )
   
     Write-warning "FileDependency  $name -> $UsedFile"
@@ -48,6 +58,7 @@ Function New-FileDependency{
 # Follow_Property  : est un nom d'une propriété d'un objet, son contenu pouvant pointer sur un autre objet (de même type ou pas) ou être $null
 # Follow_Label     : libellé de la relation (arête/edge) entre deux noeuds (sommet/vertex) du graphe
 # Label_Property   : Nom de la propriété d'un objet contenant le libellé de chaque noeud (sommet) du graphe
+#todo dépendance implicite sur PSAutograph.psm1
 $ObjectMap = @{
     "FunctionDependency" = @{
        Follow_Property = 'CalledFunction'
@@ -90,6 +101,7 @@ function ConvertTo-FunctionObjectMap {
   ) 
    #Here, one  vertex is a the function name
   $Vertices= $CodeMap.Digraph.GetVertices() 
+  $Contener=$CodeMap.Contener
    
   foreach ($vertex in $Vertices )#.GetEnumerator() )
   {  
@@ -106,7 +118,7 @@ function ConvertTo-FunctionObjectMap {
     if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
     {
       Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
-      New-FunctionDefinition $Parent.Name -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
+      New-FunctionDefinition -Name $Parent.Name -Contener $Contener -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName -Contener $Contener)
     }
     foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
     {
@@ -118,7 +130,7 @@ function ConvertTo-FunctionObjectMap {
       { continue }
 
       Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
-      New-CalledFunction -Name $CurrentFunctionName -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name)
+      New-CalledFunction -Name $CurrentFunctionName -Contener $Contener -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name -Contener $Contener )
     }
   }  
 }
