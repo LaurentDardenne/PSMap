@@ -1,5 +1,7 @@
 # Avoids one circular dependency, between the modules 'CodeMap' and 'dependency' 
 #todo refactoring ?
+#todo Pour codemap, ajouter un intermédiaire entre les différents outils de visu, codemap ne doit rien connaitre des outils il produit juste des listes de dépendances
+#     Sous réserve que codemap puisse fournir les données nécessaires aux différents outils CQFD !   
 function Get-CodeMap {
  #Prepares the data needed to build function dependency graphs and file dependencies
  # that are external to the current file
@@ -28,7 +30,7 @@ function Get-CodeMap {
     New-CodeMap @Parameters
 }
 
-IPMO G:\PS\PSAutograph\src\PSAutograph.psd1
+Import-Module G:\PS\PSAutograph\src\PSAutograph.psd1
 
 Set-Location  G:\PS\PSMap
 Import-Module G:\PS\PSMap\src\CodeMap\CodeMap.psd1 -force
