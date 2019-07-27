@@ -63,11 +63,11 @@ On doit connaitre le parent pour construire le graph
  - un script principal (parent) appel un script
  - une fonction (parent) du script (parent de la fonction) appel un script
 
-Contener de code = fichier contenant du code
+Conteneur de ligne de code = fichier contenant du code (l'AST est un représentation du code)
 Script 
 Module (script ou Dll)
 
-Objet définissant du code, un AST :
+Objet contenant du code :
 Script 
 Module 
 Function 

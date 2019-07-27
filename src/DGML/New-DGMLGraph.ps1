@@ -2,7 +2,7 @@ $code=Get-Content ..\PSMap-master\src\DGML\DmglDirectedGraph\DmglDirectedGraph\d
 
 $Asm=Add-type -TypeDefinition $code -ReferencedAssemblies System.xml.dll -PassThru
 #View Enum values
-if ($treu -eq $false) {
+if ($true -eq $false) {
     $Asm|
     Where-Object {$_.IsEnum}|
     ForEach-Object{

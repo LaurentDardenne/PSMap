@@ -1,7 +1,48 @@
 format 221
 
-classcanvas 128002 class_ref 128002 // Contener
+classcanvas 128002 class_ref 128002 // File
   classdiagramsettings member_max_width 0 end
-  xyz 86 83 2000
+  xyzwh 337 130 2000 139 155
+end
+note 129026 "Dans le contexte de PSMap, une dependance ne peut être que du code.
+On pourrait avoir des dépendances de ressources, mais on restreint le périmètre d'analyse."
+  xyzwh 9 8 2000 469 53
+note 130050 "Un module et un assembly peuvent être lié et chacun peut avoir à une liste de cmldet"
+  xyzwh 527 422 2000 305 69
+note 130178 "L'analyse débute par un fichier, puis ses dépendances."
+  xyzwh 123 283 2000 295 37
+note 130306 "L'AST défini le type du code ( Fonction Filter Workflow classe).
+
+Une fonction ( scriptblock) est aussi un conteneur pour d'autres fonctions."
+  xyzwh 500 231 2000 335 77
+note 130434 "Call et Depend sont similaire pour un objet script
+Code (contenu) et container de code (contenant), container de container
+Si on appel un code externe, c'est une dépendance qui est aussi un conteneur et celui-ci peut exister en tant que référence dans le code mais le fichier (contenant le code) être inacessible.
+La référence de l'appel existe (call),
+la référence de la dépendance existe (depend) Si le noeud appelé est externe
+la détail de la dépendance peut ne pas exister.
+
+On doit connaitre le parent (pour une fonction qui la déclare?) pour construire le graph
+ - un script principal (parent) appel un script
+ - une fonction (parent) du script (parent de la fonction) appel un script
+Note : on ne peut déterminer (ou difficilement) l'association d'un nom de fonction et son conteneur ( sauf si on a un nom qualifié pour un module)
+Le parent peut être un conteneur fichier ou une fonction.
+Une fonction 'orpheline' ( i.e. sans lien, elle est appelée une fois dans le principal) n'a pas de parent mais un conteneur.
+
+Certaine notion/relation existe dans le graph uniquement et d'autre dans la structure du code uniquement.
+Dépendance bidirectionnelle = référence circulaire ?"
+  xyzwh 14 411 2000 423 337
+classcanvas 130690 class_ref 147970 // CodeContainerType
+  classdiagramsettings member_max_width 0 end
+  xyz 658 115 2000
+end
+relationcanvas 128642 relation_ref 128258 // <aggregation>
+  decenter_begin 554
+  decenter_end 156
+  from ref 128002 z 2001 to point 378 92
+  line 128770 z 2001 to point 347 93
+  line 128898 z 2001 to ref 128002
+  role_a_pos 367 111 3000 no_role_b
+  no_multiplicity_a no_multiplicity_b
 end
 end
