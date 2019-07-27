@@ -7,8 +7,8 @@
     <ProjectGuid>{B870D1C1-F812-49A4-81CF-65516B342301}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DmglUtils</RootNamespace>
-    <AssemblyName>DmglDirectedGraph</AssemblyName>
+    <RootNamespace>DgmlUtils</RootNamespace>
+    <AssemblyName>DgmlDirectedGraph</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
