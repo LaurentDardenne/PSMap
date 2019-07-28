@@ -32,6 +32,7 @@ Function New-DgmlLinkList {
 }
 
 Function New-DgmlNode {
+  #    <Node Id="Elizabeth" Category="Queen" Label="Elizabeth" Stroke="#00FFFFFF" />
   param (
     [ValidateNotNull()]
     [System.Collections.Hashtable]$Properties
@@ -67,7 +68,10 @@ Function New-DgmlLink {
       [String]$Source,
     
         [Parameter(Mandatory,ParameterSetName = 'Property')]
-      [String]$Target
+      [String]$Target,
+      
+      [Parameter(ParameterSetName = 'Property')]
+      [String]$Label      
      )
    if ($PSCmdlet.ParameterSetName -eq 'Property')
    { $Properties =@{ Source=$Source;Target=$Target } }
@@ -98,6 +102,41 @@ Function Add-DgmlLink {
   $Link=New-DgmlLink @PSBoundParameters
   $Links.Add($Link) > $null
 }
+
+#Todo
+# https://stackoverflow.com/questions/31025704/how-to-style-give-color-link-from-group-to-generic-node
+# https://ceyhunciper.wordpress.com/2010/08/21/dgml-simplified-%E2%80%93-categories/
+# https://timetocode.wordpress.com/2016/07/22/graphs-and-trees-visualization-with-dgml/ (groupe)
+#
+#search dgml <Condition Expression
+#
+# #todo add Categories
+# <Categories>
+# <Category Id="Prince" Background="#FF0000FF" />
+# <Category Id="Princess" Background="#FFFF0000" />
+# <Category Id="Queen" Background="#FFFFD700" />
+# </Categories>
+# #todo add Properties
+# <Properties>
+# <Property Id="Background" Label="Background" Description="The background color" DataType="System.Windows.Media.Brush" />
+# <Property Id="Label" Label="Label" Description="Displayable label of an Annotatable object" DataType="System.String" />
+# <Property Id="Stroke" DataType="System.Windows.Media.Brush" />
+# </Properties>
+# #todo add Style With Condition
+# <Styles>
+# <Style TargetType="Node" GroupLabel="Queen" ValueLabel="True">
+#   <Condition Expression="HasCategory(‘Queen’)" />
+#   <Setter Property="Background" Value="#FFFFD700" />
+# </Style>
+# <Style TargetType="Node" GroupLabel="Princess" ValueLabel="True">
+#   <Condition Expression="HasCategory(‘Princess’)" />
+#   <Setter Property="Background" Value="#FFFF0000" />
+# </Style>
+# <Style TargetType="Node" GroupLabel="Prince" ValueLabel="True">
+#   <Condition Expression="HasCategory(‘Prince’)" />
+#   <Setter Property="Background" Value="#FF0000FF" />
+# </Style>
+# </Styles>
 
 function Get-DgmlEnums {
  #Retrieve the Enums list declared by [DgmlUtils.DirectedGraph
