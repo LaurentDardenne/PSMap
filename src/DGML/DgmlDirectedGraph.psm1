@@ -6,17 +6,12 @@ Note
 #>
 
 Function New-DgmlGraph {
-  #create a Dgml graph with a title and the Nodes and Links properties assigned
-  # The Node list allow duplicate data without raising an exception
-  # The Link list allow duplicate data without raising an exception
-
+  #create a Dgml graph with a title
+  
   param ([string] $Title)
   $Graph=[DgmlUtils.DirectedGraph]::new()
   #$Graph.Layout='DependencyMatrix'
   $Graph.Title=$Title
-  
-  $Graph.Nodes=New-DgmlNodeList 
-  $Graph.Links=New-DgmlLinkList
   
   #$Graph.Layout='DependencyMatrix'
 
@@ -27,28 +22,83 @@ Function New-DgmlGraph {
 # $Nodes.exists(predicate)
 
 Function New-DgmlNodeList {
-  Return New-Object System.Collections.Generic.List[DgmlUtils.DirectedGraphNode]  
+  # The Node list allow duplicate data without raising an exception
+  Return ,(New-Object System.Collections.Generic.List[DgmlUtils.DirectedGraphNode])
+}
+
+Function New-DgmlLinkList {
+  # The Link list allow duplicate data without raising an exception
+  Return ,(New-Object System.Collections.Generic.List[DgmlUtils.DirectedGraphLink])
 }
 
 Function New-DgmlNode {
-  param([System.Collections.Hashtable]$Properties)
-  
+  param (
+    [ValidateNotNull()]
+    [System.Collections.Hashtable]$Properties
+   )
+
   Return ([DgmlUtils.DirectedGraphNode]$Properties)
 }
 
-$Links.Add([DgmlUtils.DirectedGraphLink]@{Source='a';Target='b'}) >$null
+Function Add-DgmlNode {
+  [CmdletBinding()]
+  param (
+      [Parameter(Mandatory)]
+      [AllowEmptyCollection()]
+    [System.Collections.Generic.List[DgmlUtils.DirectedGraphNode]]$Nodes,
 
-Function New-DgmlLinkList {
-  Return New-Object System.Collections.Generic.List[DgmlUtils.DirectedGraphLink]  
+      [Parameter(Mandatory)]
+      [ValidateNotNull()]
+    [System.Collections.Hashtable]$Properties
+   )
+
+  $Node=[DgmlUtils.DirectedGraphNode]$Properties
+  $Nodes.Add($Node) > $null
 }
 
 Function New-DgmlLink {
-  #create a link between two nodes.
-  #New-DgmlLink @{Source='a';Target='b'}
-  param([System.Collections.Hashtable]$Properties)
-
-  Return ([DgmlUtils.DirectedGraphLink]$Properties)
+  #create a link between two nodes.  
+    [CmdletBinding(DefaultParameterSetName = 'Hashtable')]
+    param (
+        [Parameter(Mandatory,ParameterSetName = 'Hashtable')]
+      [System.Collections.Hashtable]$Properties,
+      
+        [Parameter(Mandatory,ParameterSetName = 'Property')]
+      [String]$Source,
+    
+        [Parameter(Mandatory,ParameterSetName = 'Property')]
+      [String]$Target
+     )
+   if ($PSCmdlet.ParameterSetName -eq 'Property')
+   { $Properties =@{ Source=$Source;Target=$Target } }
+  
+   Return ([DgmlUtils.DirectedGraphLink]$Properties)
 }
+Function Add-DgmlLink {
+  [CmdletBinding(DefaultParameterSetName = 'Hashtable')]
+  param (
+      [Parameter(Mandatory)]
+      [AllowEmptyCollection()]
+      [System.Collections.Generic.List[DgmlUtils.DirectedGraphLink]]$Links,
+
+      [Parameter(Mandatory,ParameterSetName = 'Hashtable')]
+      [ValidateNotNull()]
+    [System.Collections.Hashtable]$Properties,
+    
+      [Parameter(Mandatory,ParameterSetName = 'Property')]
+      [ValidateNotNullOrEmpty()]
+    [String]$Source,
+  
+      [Parameter(Mandatory,ParameterSetName = 'Property')]
+      [ValidateNotNullOrEmpty()]
+    [String]$Target
+   )
+
+  $PSBoundParameters.Remove('Links') >$null
+  $Link=New-DgmlLink @PSBoundParameters
+  $Links.Add($Link) > $null
+}
+
 function Get-DgmlEnums {
  #Retrieve the Enums list declared by [DgmlUtils.DirectedGraph
  #todo créer des raccourcis ?
