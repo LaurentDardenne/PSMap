@@ -34,8 +34,7 @@ function Get-AST {
   [CmdletBinding(DefaultParameterSetName = 'File')]
   param (
       # Path to file to process.
-      [Parameter(Mandatory,ParameterSetName = 'File'
-      )]
+      [Parameter(Mandatory,ParameterSetName = 'File')]
       [Alias('Path','PSPath')]
       [ValidateScript({
           if (Test-Path -Path $_ -ErrorAction SilentlyContinue) {
