@@ -100,7 +100,7 @@ function ConvertTo-FileInfo{
   [System.IO.FileInfo]$ScriptPath
 }
 
-Function New-Contener{
+Function New-Container{
   param(
       [Parameter(Mandatory=$True,position=0)]
     $Path,
@@ -110,11 +110,11 @@ Function New-Contener{
   )
   
   [pscustomobject]@{
-    PSTypeName='Contener';
+    PSTypeName='Container';
     FileInfo=ConvertTo-FileInfo $Path;
     Type=$Type;
   }
-}# New-Contener
+}# New-Container
 
 
 Function Get-StaticParameterBinder{
@@ -212,7 +212,7 @@ function Get-UsingStatementParameter{
 function Get-InformationModule{
   param(
     [System.Management.Automation.Language.CommandAst] $Command,
-    $Contener
+    $Container
   )
     $CommandElement=$Command.CommandElements[1]
     $TypeName=$CommandElement.GetType().Name
@@ -301,13 +301,13 @@ function Get-InformationDLL{
   param(
     [System.Management.Automation.Language.CommandAst] $Command
   )
-  function New-InformationDLL{
+  function New-InformationDLL{ #todo usage ? et par qui ?
     param(
       $Name
      )
    return @{Name=$Name}
   }
-  $Parameters=Get-StaticParameterBinder $Command -AddType
+  $Parameters=Get-StaticParameterBinder $Command -AddType #todo return ?
 }
 
 function Get-AssemblyVersion{
@@ -442,16 +442,19 @@ function ConvertTo-AssemblyDependency {
 }
 
 function ConvertTo-CommandDependency {
-  param ($Command)
+  param (
+     $Command,
+     $Container
+  )
 
   $CommandName=$Command.GetCommandName()
   if ($null -ne $CommandName)
   {
       if ($CommandName -match 'Update-FormatData|Update-TypeData')
-      { Write-Warning "todo ETS" }# Get-InformationETS $Command -Contener $CurrentContener; Continue }  #todo
+      { Write-Warning "todo ETS" }# Get-InformationETS $Command -Container $Container; Continue }  #todo
 
       if ($CommandName -match 'Import-Module|IPMO')
-      { Get-InformationModule $Command -Contener $CurrentContener; Continue }
+      { Get-InformationModule $Command -Container $Container; Continue } 
   
       if ($CommandName -match 'Start-Process|saps|start')
       { Get-InformationProgram $Command ; Continue }
@@ -492,7 +495,6 @@ function ConvertTo-CommandDependency {
 
 #Les dépendances constitue un graphe et pas un arbre.
 #todo On doit éviter de reparser un fichier déjà parsé 
-#todo Contener or CodeContener
 Function Read-Dependency {
    [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
@@ -502,7 +504,7 @@ Function Read-Dependency {
 
         [ValidateNotNullOrEmpty()] 
         [Parameter(Position=0, Mandatory=$true,ParameterSetName="CodeMap")]
-      $Contener,
+      $Container,
 
         [ValidateNotNullOrEmpty()] 
         [Parameter(Position=1, Mandatory=$true,ParameterSetName="CodeMap")]
@@ -522,16 +524,16 @@ Function Read-Dependency {
   
   if ($PsCmdlet.ParameterSetName -eq "Path")
   {  
-    $Contener=New-Contener -Path (Convert-Path $Path) -Type Script
+    $Container=New-Container -Path (Convert-Path $Path) -Type Script
     $AstParsing=Get-Ast -FilePath $Path
     $Ast=$AstParsing.Ast
   }
    # todo backup location ?
-  [Environment]::CurrentDirectory = $Contener.FileInfo.DirectoryName
+  [Environment]::CurrentDirectory = $Container.FileInfo.DirectoryName
 
   $Commands=$Ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.CommandAst] },$true)
-  #TODO     &$function:bob  $function:bob.InvokeXXX()
 
+  #TODO     &$function:bob  $function:bob.InvokeXXX()
   $FunctionWithAssign=$ast.FindAll( { param($Ast) 
     ($Ast -is [System.Management.Automation.Language.AssignmentStatementAst]) -and
     ($Ast.Left.VariablePath.DriveName -eq 'function') -and 
@@ -548,7 +550,7 @@ Function Read-Dependency {
   { Get-UsingStatementParameter $UsingStatement $global:ErrorsAst }
 
   foreach ($Command in $Commands)
-  {  ConvertTo-CommandDependency -Command $Command }
+  {  ConvertTo-CommandDependency -Command $Command -Container $Container}
 
 #TODO
   #Contenu

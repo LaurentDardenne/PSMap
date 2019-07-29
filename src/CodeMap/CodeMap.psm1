@@ -3,10 +3,10 @@ Function New-CalledFunction{
          [Parameter(Mandatory=$True,position=0)]
         $Name,
         
-        [Parameter(Mandatory=$True,position=1)]
-        $CodeContener,
+        [Parameter(position=1)]
+        $Container,
 
-         [Parameter(position=0)]
+         [Parameter(position=2)]
         $CalledFunction=$null
     )
 
@@ -14,7 +14,7 @@ Function New-CalledFunction{
     [pscustomObject]@{
       PSTypeName='FunctionDependency';
       Name=$Name;
-      Contener=$CodeContener;
+      Container=$Container;
       CalledFunction=$CalledFunction
     }
 }
@@ -23,8 +23,8 @@ Function New-FunctionDefinition{
          [Parameter(Mandatory=$True,position=0)]
         $Name,
 
-        [Parameter(Mandatory=$True,position=1)]
-        $CodeContener,
+        [Parameter(position=1)]
+        $Container,
 
         [Parameter(position=2)]
          $FunctionDefined=$null
@@ -34,7 +34,7 @@ Function New-FunctionDefinition{
     [pscustomObject]@{
       PSTypeName='FunctionDefinition';
       Name=$Name;
-      Contener=$Contener;
+      Container=$Container;
       FunctionDefined=$FunctionDefined
     }
 }
@@ -101,7 +101,7 @@ function ConvertTo-FunctionObjectMap {
   ) 
    #Here, one  vertex is a the function name
   $Vertices= $CodeMap.Digraph.GetVertices() 
-  $Contener=$CodeMap.Contener
+  $Container=$CodeMap.Container
    
   foreach ($vertex in $Vertices )#.GetEnumerator() )
   {  
@@ -118,7 +118,7 @@ function ConvertTo-FunctionObjectMap {
     if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
     {
       Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
-      New-FunctionDefinition -Name $Parent.Name -Contener $Contener -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName -Contener $Contener)
+      New-FunctionDefinition -Name $Parent.Name -Container $Container -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
     }
     foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
     {
@@ -130,7 +130,7 @@ function ConvertTo-FunctionObjectMap {
       { continue }
 
       Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
-      New-CalledFunction -Name $CurrentFunctionName -Contener $Contener -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name -Contener $Contener )
+      New-CalledFunction -Name $CurrentFunctionName -Container $Container -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name )
     }
   }  
 }
@@ -174,7 +174,7 @@ function New-LookupTable {
 Function New-CodeMap{
     param(
           [Parameter(Mandatory=$True,position=0)]
-        $Contener,
+        $Container,
           [Parameter(Mandatory=$True,position=1)]
         $Ast,
           [Parameter(Mandatory=$True,position=2)]
@@ -190,7 +190,7 @@ Function New-CodeMap{
   
     [pscustomobject]@{
       PSTypeName='CodeMap';
-      Contener=$Contener;
+      Container=$Container;
       Ast=$Ast;
       DiGraph=$DiGraph;
       Dependencies=$Dependencies;

@@ -13,13 +13,13 @@ function Get-CodeMap {
     #todo how to define -Type ?
     #todo if path does not exist or need access rights
 
-    $Contener=New-Contener -Path (Convert-Path $Path) -Type Script
-    $AstParsing=Get-Ast -FilePath $Contener.FileInfo.FullName
-    $Dependencies= Read-Dependency -Contener $Contener -Ast $AstParsing.Ast
+    $Container=New-Container -Path (Convert-Path $Path) -Type Script
+    $AstParsing=Get-Ast -FilePath $Container.FileInfo.FullName
+    $Dependencies= Read-Dependency -Container $Container -Ast $AstParsing.Ast
 
 
     $Parameters=@{
-      Contener=$Contener #duplication de données avec l'objet ASTparsing ?
+      Container=$Container #duplication de données avec l'objet ASTparsing ?
       Ast=$AstParsing.Ast
       DiGraph=[PSADigraph.FunctionReferenceDigraph]::New() #TODO A l'origine le graph des F° est lié à un AST
       Dependencies= $Dependencies
