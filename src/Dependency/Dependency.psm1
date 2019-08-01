@@ -301,13 +301,8 @@ function Get-InformationDLL{
   param(
     [System.Management.Automation.Language.CommandAst] $Command
   )
-  function New-InformationDLL{ #todo usage ? et par qui ?
-    param(
-      $Name
-     )
-   return @{Name=$Name}
-  }
-  $Parameters=Get-StaticParameterBinder $Command -AddType #todo return ?
+ 
+ Get-StaticParameterBinder $Command -AddType
 }
 
 function Get-AssemblyVersion{
