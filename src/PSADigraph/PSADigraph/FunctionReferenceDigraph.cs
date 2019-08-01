@@ -509,7 +509,9 @@ namespace PSADigraph
             {
                 return AstVisitAction.SkipChildren;
             }
-
+#if DEBUG
+            AppLogger.DebugFormat("VisitInvokeMemberExpression begin: ", ast.ToString());
+#endif
             var expr = ast.Expression.Extent.Text;
             var memberExprAst = ast.Member as StringConstantExpressionAst;
             if (memberExprAst == null)
@@ -528,7 +530,9 @@ namespace PSADigraph
 #endif
                 return AstVisitAction.Continue;
             }
-
+#if DEBUG
+            AppLogger.DebugFormat("VisitInvokeMemberExpression  member= {0} -> AddVertex", memberExprAst.ToString());
+#endif
             // Suppose we find <Expression>.<Member>, we split it up and create
             // and edge only to <Member>. Even though <Expression> is not
             // necessarily a function, we do it because we are mainly interested in
