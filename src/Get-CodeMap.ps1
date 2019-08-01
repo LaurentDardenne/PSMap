@@ -30,11 +30,13 @@ function Get-CodeMap {
     New-CodeMap @Parameters
 }
 
-Import-Module G:\PS\PSAutograph\src\PSAutograph.psd1
 
-Set-Location  G:\PS\PSMap
-Import-Module G:\PS\PSMap\src\CodeMap\CodeMap.psd1 -force
-Import-Module G:\PS\PSMap\src\Dependency\Dependency.psm1 -force
+$path='G:\PS\PSMap\src\'
+Import-Module PSAutograph
+
+Set-Location  $Path
+Import-Module $Path\CodeMap\CodeMap.psd1 -force
+Import-Module $Path\Dependency\Dependency.psm1 -force
 
 
 $File='.\Test\SourceCode\CommandsDependencies.ps1'
@@ -46,7 +48,9 @@ $file='G:\PS\PSMap\src\Dependency\Dependency.psm1'
 $CodeMap=Get-CodeMap -Path $File
 
 todo considére un appel de script comme une fonction...
-$FunctionGraph=ConvertTo-FunctionObjectMap -CodeMap $CodeMap
+#Exclue une fonction qui génére du brtui ( trop de lien)
+# -Function ne considère que les déclarations de fonction
+$FunctionGraph=ConvertTo-FunctionObjectMap -CodeMap $CodeMap -Exclude 'Write-Log' -Function 
 
 $viewer = New-MSaglViewer
 $g1 = New-MSaglGraph
