@@ -22,6 +22,23 @@
 #todo doit pointer sur le contexte de l'appelant
 $sbIsScriptDotSource={ ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript') }
 
+#codemap filtrer les commande du runtime 
+$script:RuntimeModules=@(
+ 'Microsoft.PowerShell.Core',
+ 'Microsoft.PowerShell.Diagnostics',
+ 'Microsoft.PowerShell.Host',
+ 'Microsoft.PowerShell.Management',
+ 'Microsoft.PowerShell.Security',
+ 'Microsoft.PowerShell.Utility',
+ 'Microsoft.PowerShell.LocalAccounts', #Windows 10 ?
+ 'Microsoft.WSMan.Management',
+ 'ISE',#todo à tester
+ 'PSDesiredStateConfiguration', #PS v4
+ 'PSScheduledJob',
+ 'PSWorkflow',
+ 'PSWorkflowUtility'
+)
+
 
 function Get-AST {
 #from http://becomelotr.wordpress.com/2011/12/19/powershell-vnext-ast/
