@@ -100,10 +100,10 @@ function ConvertTo-FunctionObjectMap {
       [string[]] $Exclude=@()
   ) 
    #Here, one  vertex is a the function name
-  $Vertices= $CodeMap.Digraph.GetVertices() 
+  $Vertices= $CodeMap.Digraph.GetVertices() | |Where-object { $_.Ast -isnot [System.Management.Automation.Language.StringConstantExpressionAst]} #todo to remove Digraph.cs visit StringConstantExpressionAst ?
   $Container=$CodeMap.Container
    
-  foreach ($vertex in $Vertices )#.GetEnumerator() )
+  foreach ($vertex in $Vertices )
   {  
     if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
     { continue }
@@ -123,6 +123,9 @@ function ConvertTo-FunctionObjectMap {
     foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
     {
       Write-Debug "Neighbors $CommandCalled" 
+      if ($CommandCalled.Ast -is [System.Management.Automation.Language.StringConstantExpressionAst])
+      { continue } #todo to remove Digraph.cs visit StringConstantExpressionAst ?
+
       if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
       { continue }
       
