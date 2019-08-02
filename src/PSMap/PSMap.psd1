@@ -16,6 +16,8 @@
 
   RequiredModules=@(
     @{ModuleName="Log4Posh";GUID="f796dd07-541c-4ad8-bfac-a6f15c4b06a0"; ModuleVersion="3.0.3"}
+    @{ModuleName="CodeMap";GUID="fc908210-538a-4697-bf6d-b6f9c66828e7"; ModuleVersion="1.0.0"}
+    @{ModuleName="Dependency";GUID="68182e63-a349-49c2-b78d-bbd5bb029e19"; ModuleVersion="1.0.0"}
   )
     # Supported PSEditions
   CompatiblePSEditions = 'Desktop'
