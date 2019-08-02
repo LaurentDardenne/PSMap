@@ -1,3 +1,16 @@
+#CodeMap.psm1
+
+$Script:lg4n_ModuleName=$MyInvocation.MyCommand.ScriptBlock.Module.Name
+
+$InitializeLogging=[scriptblock]::Create("${function:Initialize-Log4Net}")
+$Params=@{
+  RepositoryName = $Script:lg4n_ModuleName
+  XmlConfigPath = "$psScriptRoot\PSMapLog4Net.Config.xml"
+  DefaultLogFilePath = "$psScriptRoot\Logs\${Script:lg4n_ModuleName}.log"
+  Scope='Script'
+}
+&$InitializeLogging @Params
+
 Function New-CalledFunction{
     param(
          [Parameter(Mandatory=$True,position=0)]
@@ -54,11 +67,11 @@ Function New-FileDependency{
     }
 }
 
-#Chaque nom de clé est un nom de type d'un objet à traiter, sa valeur est une hashtable possédant les clés suivantes :
-# Follow_Property  : est un nom d'une propriété d'un objet, son contenu pouvant pointer sur un autre objet (de même type ou pas) ou être $null
-# Follow_Label     : libellé de la relation (arête/edge) entre deux noeuds (sommet/vertex) du graphe
-# Label_Property   : Nom de la propriété d'un objet contenant le libellé de chaque noeud (sommet) du graphe
-#todo dépendance implicite sur PSAutograph.psm1
+#Chaque nom de cl� est un nom de type d'un objet � traiter, sa valeur est une hashtable poss�dant les cl�s suivantes :
+# Follow_Property  : est un nom d'une propri�t� d'un objet, son contenu pouvant pointer sur un autre objet (de m�me type ou pas) ou �tre $null
+# Follow_Label     : libell� de la relation (ar�te/edge) entre deux noeuds (sommet/vertex) du graphe
+# Label_Property   : Nom de la propri�t� d'un objet contenant le libell� de chaque noeud (sommet) du graphe
+#todo d�pendance implicite sur PSAutograph.psm1
 $ObjectMap = @{
     "FunctionDependency" = @{
        Follow_Property = 'CalledFunction'
@@ -202,4 +215,11 @@ Function New-CodeMap{
     }
   }# New-CodeMap
 
+Function OnRemove {
+  Stop-Log4Net $Script:lg4n_ModuleName
+}#OnRemovePsIonicZip
+
+# Section  Initialization
+$MyInvocation.MyCommand.ScriptBlock.Module.OnRemove = { OnRemove }
+  
 Export-ModuleMember -Function * -Variable 'ObjectMap'

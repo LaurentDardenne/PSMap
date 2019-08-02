@@ -19,6 +19,17 @@
 # rechercher ces dépendances dans une liste des fichiers établie avant l'analyse
 #on peut donc avoir des dépendances incomplètes, mais on peut savoir lequelles.
 
+$Script:lg4n_ModuleName=$MyInvocation.MyCommand.ScriptBlock.Module.Name
+
+$InitializeLogging=[scriptblock]::Create("${function:Initialize-Log4Net}")
+$Params=@{
+  RepositoryName = $Script:lg4n_ModuleName
+  XmlConfigPath = "$psScriptRoot\PSMapLog4Net.Config.xml"
+  DefaultLogFilePath = "$psScriptRoot\Logs\${Script:lg4n_ModuleName}.log"
+  Scope='Script'
+}
+&$InitializeLogging @Params
+
 #todo doit pointer sur le contexte de l'appelant
 $sbIsScriptDotSource={ ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript') }
 
@@ -579,6 +590,14 @@ Function Read-Dependency {
   { ConvertTo-AssemblyDependency -Expression $Current }
 
 }
+Function OnRemove {
+  Stop-Log4Net $Script:lg4n_ModuleName
+}#OnRemovePsIonicZip
+
+# Section  Initialization
+$MyInvocation.MyCommand.ScriptBlock.Module.OnRemove = { OnRemove }
+#Export-ModuleMember -Function * -Variable 
+
 #Export-ModuleMember Get-Ast Internal
 
 #todo Read-Dependency doit-elle émettre des conteneurs ou des objets PS/AST ?
