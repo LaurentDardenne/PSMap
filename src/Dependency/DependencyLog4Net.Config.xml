@@ -47,7 +47,7 @@
   </appender>
 
   <appender name="FileInternal" type="log4net.Appender.RollingFileAppender">
-    <file type="log4net.Util.PatternString" value="%env{TEMP}\\CodeMap-%property{Owner}-%property{LogJobName}-%date{ddMMyyyy}.log"/>
+    <file type="log4net.Util.PatternString" value="%env{TEMP}\\Dependency-%property{Owner}-%property{LogJobName}-%date{ddMMyyyy}.log"/>
     <param name="AppendToFile" value="true"/>
     <rollingStyle value="Size"/>
     <maxSizeRollBackups value="5"/>
@@ -60,7 +60,7 @@
   </appender>
 
   <appender name="FileExternal" type="log4net.Appender.RollingFileAppender">
-    <file type="log4net.Util.PatternString" value="%env{TEMP}\\CodeMap-%property{Owner}-%property{LogJobName}-%date{ddMMyyyy}.log"/>
+    <file type="log4net.Util.PatternString" value="%env{TEMP}\\Dependency-%property{Owner}-%property{LogJobName}-%date{ddMMyyyy}.log"/>
     <param name="AppendToFile" value="true"/>
     <rollingStyle value="Size"/>
     <maxSizeRollBackups value="5"/>
