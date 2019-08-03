@@ -97,8 +97,7 @@ function ConvertTo-FunctionObjectMap {
   ) 
 
    #Here, one  vertex is a the function name
-  $Vertices= $CodeMap.Digraph.GetVertices() | 
-               Where-object { $_.Ast -isnot [System.Management.Automation.Language.StringConstantExpressionAst]} #todo to remove Digraph.cs visit StringConstantExpressionAst ?
+  $Vertices= $CodeMap.Digraph.GetVertices() 
   $Container=$CodeMap.Container
    
   foreach ($vertex in $Vertices )
@@ -143,8 +142,6 @@ function ConvertTo-FunctionObjectMap {
     foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
     {
       Write-Debug "Neighbors $CommandCalled" 
-      if ($CommandCalled.Ast -is [System.Management.Automation.Language.StringConstantExpressionAst])
-      { continue } #todo to remove Digraph.cs visit StringConstantExpressionAst ?
 
       if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
       { continue }

@@ -504,55 +504,55 @@ namespace PSADigraph
         /// Add a member to the graph and if within a function definition, add an edge from the function to the member.
         /// NOTE : Not needed for CodeMap
         /// </summary>
-        public override AstVisitAction VisitInvokeMemberExpression(InvokeMemberExpressionAst ast)
-        {
-            if (ast == null)
-            {
-                return AstVisitAction.SkipChildren;
-            }
-#if DEBUG
-            AppLogger.DebugFormat("VisitInvokeMemberExpression begin: ", ast.ToString());
-#endif
-            var expr = ast.Expression.Extent.Text;
-            var memberExprAst = ast.Member as StringConstantExpressionAst;
-            if (memberExprAst == null)
-            {
-#if DEBUG
-                AppLogger.DebugFormat("VisitInvokeMemberExpression {0} not StringConstantExpressionAst", ast.ToString());
-#endif
-                return AstVisitAction.Continue;
-            }
+//        public override AstVisitAction VisitInvokeMemberExpression(InvokeMemberExpressionAst ast)
+//        {
+//            if (ast == null)
+//            {
+//                return AstVisitAction.SkipChildren;
+//            }
+//#if DEBUG
+//            AppLogger.DebugFormat("VisitInvokeMemberExpression begin: ", ast.ToString());
+//#endif
+//            var expr = ast.Expression.Extent.Text;
+//            var memberExprAst = ast.Member as StringConstantExpressionAst;
+//            if (memberExprAst == null)
+//            {
+//#if DEBUG
+//                AppLogger.DebugFormat("VisitInvokeMemberExpression {0} not StringConstantExpressionAst", ast.ToString());
+//#endif
+//                return AstVisitAction.Continue;
+//            }
 
-            var member = memberExprAst.Value;
-            if (string.IsNullOrWhiteSpace(member))
-            {
-#if DEBUG
-                AppLogger.DebugFormat("VisitInvokeMemberExpression {0} memberExprAst isnull or empty", ast.ToString());
-#endif
-                return AstVisitAction.Continue;
-            }
-#if DEBUG
-            AppLogger.DebugFormat("VisitInvokeMemberExpression  member= {0} -> AddVertex", memberExprAst.ToString());
-#endif
-            // Suppose we find <Expression>.<Member>, we split it up and create
-            // and edge only to <Member>. Even though <Expression> is not
-            // necessarily a function, we do it because we are mainly interested in
-            // finding connection between a function and ShouldProcess and this approach
-            // prevents any unnecessary complexity.
-            //
-            // Note : Seems to find the presence of '$PSCmdlet.ShouldProcess' for PSSA rules.
-            var memberVertex = new Vertex(memberExprAst.Value, memberExprAst);
-            AddVertex(memberVertex);
-            if (IsWithinFunctionDefinition())
-            {
-#if DEBUG
-                AppLogger.DebugFormat("VisitInvokeMemberExpression  {0} IsWithinFunctionDefinition -> AddEdge", memberExprAst.Value);
-#endif
-                AddEdge(GetCurrentFunctionContext(), memberVertex);
-            }
+//            var member = memberExprAst.Value;
+//            if (string.IsNullOrWhiteSpace(member))
+//            {
+//#if DEBUG
+//                AppLogger.DebugFormat("VisitInvokeMemberExpression {0} memberExprAst isnull or empty", ast.ToString());
+//#endif
+//                return AstVisitAction.Continue;
+//            }
+//#if DEBUG
+//            AppLogger.DebugFormat("VisitInvokeMemberExpression  member= {0} -> AddVertex", memberExprAst.ToString());
+//#endif
+//            // Suppose we find <Expression>.<Member>, we split it up and create
+//            // and edge only to <Member>. Even though <Expression> is not
+//            // necessarily a function, we do it because we are mainly interested in
+//            // finding connection between a function and ShouldProcess and this approach
+//            // prevents any unnecessary complexity.
+//            //
+//            // Note : Seems to find the presence of '$PSCmdlet.ShouldProcess' for PSSA rules.
+//            var memberVertex = new Vertex(memberExprAst.Value, memberExprAst);
+//            AddVertex(memberVertex);
+//            if (IsWithinFunctionDefinition())
+//            {
+//#if DEBUG
+//                AppLogger.DebugFormat("VisitInvokeMemberExpression  {0} IsWithinFunctionDefinition -> AddEdge", memberExprAst.Value);
+//#endif
+//                AddEdge(GetCurrentFunctionContext(), memberVertex);
+//            }
 
-            return AstVisitAction.Continue;
-        }
+//            return AstVisitAction.Continue;
+//        }
 
         /// <summary>
         /// Return the vertices in the graph
