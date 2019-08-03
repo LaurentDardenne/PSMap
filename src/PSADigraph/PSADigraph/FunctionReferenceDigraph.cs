@@ -501,7 +501,8 @@ namespace PSADigraph
         }
 
         /// <summary>
-        /// Add a member to the graph and if within a function definition, add an edge from the function to the member
+        /// Add a member to the graph and if within a function definition, add an edge from the function to the member.
+        /// NOTE : Not needed for CodeMap
         /// </summary>
         public override AstVisitAction VisitInvokeMemberExpression(InvokeMemberExpressionAst ast)
         {
@@ -538,6 +539,8 @@ namespace PSADigraph
             // necessarily a function, we do it because we are mainly interested in
             // finding connection between a function and ShouldProcess and this approach
             // prevents any unnecessary complexity.
+            //
+            // Note : Seems to find the presence of '$PSCmdlet.ShouldProcess' for PSSA rules.
             var memberVertex = new Vertex(memberExprAst.Value, memberExprAst);
             AddVertex(memberVertex);
             if (IsWithinFunctionDefinition())
