@@ -113,11 +113,12 @@ function ConvertTo-FunctionObjectMap {
     if ($CurrentFunctionName -in $Exclude)
     { continue }
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
-    Write-Debug "`t has three '$($CodeMap.Digraph.GetNeighbors($Vertex).count)' neighbors"
+    Write-Debug "`t has '$($CodeMap.Digraph.GetNeighbors($Vertex).count)' neighbors"
     $Parent=$Vertex.Ast.Parent.Parent.Parent
+    Write-Debug "`t try to define `$Vertex.Ast.Parent.Parent.Parent" 
     if ($null -ne $Parent) 
     { 
-      Write-Debug "`tparent  $($Parent.Gettype().fullname)" 
+      Write-Debug "`t 3 parent  $($Parent.Gettype().fullname)" 
       if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
       {
         Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
@@ -126,10 +127,11 @@ function ConvertTo-FunctionObjectMap {
     }
     else 
     {
+      Write-Debug "`t try to define `$Vertex.Ast.Parent.Parent" 
       $Parent=$Vertex.Ast.Parent.Parent
       if ($null -ne $Parent) 
       { 
-        Write-Debug "`tparent  $($Parent.Gettype().fullname)" 
+        Write-Debug "`t 2 parent  $($Parent.Gettype().fullname)" 
         if ($Parent -is [System.Management.Automation.Language.ScriptBlockAst] )
         {
           Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
