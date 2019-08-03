@@ -80,7 +80,7 @@ Function ConvertTo-Vertex {
     $Ast.Visit($funcDigraph)
     $funcDigraph.GetVertices() #Vertex=function name
 }
-  
+
 function ConvertTo-FunctionObjectMap {
   #Renvoit 2 type d'objets:
   # une définition de fonction et les appels de fonction ( de commande + précisément) contenus dans cette définition.
@@ -95,6 +95,7 @@ function ConvertTo-FunctionObjectMap {
        #To exclude functions that generate noise in the display of the graph.
       [string[]] $Exclude=@()
   ) 
+
    #Here, one  vertex is a the function name
   $Vertices= $CodeMap.Digraph.GetVertices() | 
                Where-object { $_.Ast -isnot [System.Management.Automation.Language.StringConstantExpressionAst]} #todo to remove Digraph.cs visit StringConstantExpressionAst ?
@@ -103,20 +104,39 @@ function ConvertTo-FunctionObjectMap {
   foreach ($vertex in $Vertices )
   {  
     if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
-    { continue }
+    { 
+       Write-Debug "-Function Vertex ($($vertex.name)' is not a fonction $($Vertex.Ast.gettype())" 
+       continue 
+    }
 
     $CurrentFunctionName=$Vertex.Name    
     if ($CurrentFunctionName -in $Exclude)
     { continue }
-
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
     Write-Debug "`t has three '$($CodeMap.Digraph.GetNeighbors($Vertex).count)' neighbors"
     $Parent=$Vertex.Ast.Parent.Parent.Parent
-    if ($null -ne $Parent) { Write-Debug "`tparent  $($Parent.Gettype().fullname)" }
-    if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
+    if ($null -ne $Parent) 
+    { 
+      Write-Debug "`tparent  $($Parent.Gettype().fullname)" 
+      if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
+      {
+        Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
+        New-FunctionDefinition -Name $Parent.Name -Container $Container -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
+      }
+    }
+    else 
     {
-      Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
-      New-FunctionDefinition -Name $Parent.Name -Container $Container -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
+      $Parent=$Vertex.Ast.Parent.Parent
+      if ($null -ne $Parent) 
+      { 
+        Write-Debug "`tparent  $($Parent.Gettype().fullname)" 
+        if ($Parent -is [System.Management.Automation.Language.ScriptBlockAst] )
+        {
+          Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
+          New-FunctionDefinition -Name $CurrentFunctionName -Container $Container 
+        }
+      }
+      #continue
     }
     foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
     {
@@ -134,15 +154,6 @@ function ConvertTo-FunctionObjectMap {
       New-CalledFunction -Name $CurrentFunctionName -Container $Container -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name )
     }
   }  
-}
-
-function ConvertTo-DependencyObjectMap{
-  #todo 
-  param()
-  #Dll
-  #module
-  #script
-  #ps1mxl
 }
 
 function New-LookupTable {
