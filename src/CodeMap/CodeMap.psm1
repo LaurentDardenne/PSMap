@@ -5,11 +5,12 @@ $Script:lg4n_ModuleName=$MyInvocation.MyCommand.ScriptBlock.Module.Name
 $InitializeLogging=[scriptblock]::Create("${function:Initialize-Log4Net}")
 $Params=@{
   RepositoryName = $Script:lg4n_ModuleName
-  XmlConfigPath = "$psScriptRoot\PSMapLog4Net.Config.xml"
+  XmlConfigPath = "$psScriptRoot\CodeMapLog4Net.Config.xml"
   DefaultLogFilePath = "$psScriptRoot\Logs\${Script:lg4n_ModuleName}.log"
   Scope='Script'
 }
 &$InitializeLogging @Params
+
 
 Function New-CalledFunction{
     param(
