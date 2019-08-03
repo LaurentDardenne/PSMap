@@ -12,7 +12,7 @@
   ModuleToProcess="PSMap.psm1"
   ModuleVersion="1.0.0"
   PowerShellVersion="5.1"
-#  FunctionsToExport ='',  VariablesToExport ='LogDefaultColors','LogJobName'
+#  FunctionsToExport ='',  VariablesToExport ='ObjectMap'
 
   RequiredModules=@(
     @{ModuleName="Log4Posh";GUID="f796dd07-541c-4ad8-bfac-a6f15c4b06a0"; ModuleVersion="3.0.3"}
