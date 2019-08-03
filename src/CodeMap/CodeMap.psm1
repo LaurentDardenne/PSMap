@@ -67,28 +67,7 @@ Function New-FileDependency{
     }
 }
 
-#Chaque nom de cl� est un nom de type d'un objet � traiter, sa valeur est une hashtable poss�dant les cl�s suivantes :
-# Follow_Property  : est un nom d'une propri�t� d'un objet, son contenu pouvant pointer sur un autre objet (de m�me type ou pas) ou �tre $null
-# Follow_Label     : libell� de la relation (ar�te/edge) entre deux noeuds (sommet/vertex) du graphe
-# Label_Property   : Nom de la propri�t� d'un objet contenant le libell� de chaque noeud (sommet) du graphe
-#todo d�pendance implicite sur PSAutograph.psm1
-$ObjectMap = @{
-    "FunctionDependency" = @{
-       Follow_Property = 'CalledFunction'
-       Follow_Label = 'Call'
-       Label_Property = 'Name'
-    }
-    "FunctionDefinition" = @{
-      Follow_Property = 'FunctionDefined'
-      Follow_Label = 'Define'
-      Label_Property = 'Name'
-    }
-    "FileDependency" = @{
-      Follow_Property = 'Usedfile'
-      Follow_Label = 'Depend'
-     Label_Property = 'Name'
-   }
-}
+
 Function ConvertTo-Vertex {
   # return an array of PSADigraph.Vertex
       param (
@@ -102,11 +81,14 @@ Function ConvertTo-Vertex {
 }
   
 function ConvertTo-FunctionObjectMap {
+  #Renvoit 2 type d'objets:
+  # une définition de fonction et les appels de fonction ( de commande + précisément) contenus dans cette définition.
+  # Le propriétaire/conteneur est le script analysé.
   param (
       # To retrieve the Vertices list build by a PSADigraph.FunctionReferenceDigraph instance.
       $CodeMap,
        
-      #To get only the functions.
+      #Only consider function declarations, commands called unknown are not shown in the result.
       [Switch] $Function,
 
        #To exclude functions that generate noise in the display of the graph.
@@ -127,6 +109,7 @@ function ConvertTo-FunctionObjectMap {
     { continue }
 
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
+    Write-Debug "`t has three '$($CodeMap.Digraph.GetNeighbors($Vertex).count)' neighbors"
     $Parent=$Vertex.Ast.Parent.Parent.Parent
     if ($null -ne $Parent) { Write-Debug "`tparent  $($Parent.Gettype().fullname)" }
     if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
@@ -213,7 +196,14 @@ Function New-CodeMap{
       Dependencies=$Dependencies;
       ErrorAst=$ErrorAst
     }
-  }# New-CodeMap
+}# New-CodeMap
+
+function Format-FunctionGraph{
+  param ($FunctionGraph)
+  $FunctionGraph|
+   Group-Object @{e={$_.pstypenames[0]}}|
+   Format-List -GroupBy Name
+}
 
 Function OnRemove {
   Stop-Log4Net $Script:lg4n_ModuleName
@@ -222,4 +212,4 @@ Function OnRemove {
 # Section  Initialization
 $MyInvocation.MyCommand.ScriptBlock.Module.OnRemove = { OnRemove }
   
-Export-ModuleMember -Function * -Variable 'ObjectMap'
+Export-ModuleMember -Function *
