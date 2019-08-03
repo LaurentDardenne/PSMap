@@ -19,6 +19,11 @@
 # rechercher ces dépendances dans une liste des fichiers établie avant l'analyse
 #on peut donc avoir des dépendances incomplètes, mais on peut savoir lequelles.
 
+#DOC:
+# Le contexte d'exécution  influence le résultat.
+#   Par exemple sur Windows 10    :  gcm get-aduser -> erreur
+#   mais sur un serveur configuré :   gcm get-aduser -> OK autoloading de module si RSAT installé.
+
 $Script:lg4n_ModuleName=$MyInvocation.MyCommand.ScriptBlock.Module.Name
 
 $InitializeLogging=[scriptblock]::Create("${function:Initialize-Log4Net}")
@@ -440,13 +445,7 @@ function ConvertTo-AssemblyDependency {
                   }
               }
               else
-              {
-                  New-DLLDependency $Current.Arguments[0].value
-                  [pscustomObject]@{
-                      PSTypeName='DLLDependency';
-                      Name=$name
-                  }
-              }
+              { New-DLLDependency $Current.Arguments[0].value }
           }
           else
           {
@@ -590,6 +589,41 @@ Function Read-Dependency {
   { ConvertTo-AssemblyDependency -Expression $Current }
 
 }
+
+function ConvertTo-DependencyObjectMap{
+  param(
+      [ValidateNotNullOrEmpty()] 
+      [Parameter(Position=0, Mandatory=$true)]
+    $CodeMap
+  )
+
+  #todo visu $codemap.Dependencies|group @{e={$_.pstypenames[0]}}
+  Switch ($_.pstypenames[0])
+  {
+     'Assembly' { }
+
+     'Microsoft.PowerShell.Commands.ModuleSpecification' { }
+
+     'InformationScript' { }
+
+     'NamespaceDependency' { }
+
+     'DLLDependency' { }
+# todo
+# 'ModuleStaticParameterBinder';
+# 'ProcessStaticParameterBinder';
+# 'AddTypeStaticParameterBinder'
+     Default { throw 'Not implementerd'}
+ }
+}
+
+function Format-Dependency{
+  param ($Dependencies)
+  $Dependencies|
+   Group-Object @{e={$_.pstypenames[0]}}|
+   Format-List -GroupBy Name
+}
+
 Function OnRemove {
   Stop-Log4Net $Script:lg4n_ModuleName
 }#OnRemovePsIonicZip
