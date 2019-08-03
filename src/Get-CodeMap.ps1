@@ -11,7 +11,7 @@ Import-Module PSAutograph -force
 Set-Location  $Path
 #todo need build script
  Import-Module $Path\CodeMap\CodeMap.psd1 -force
- Import-Module $Path\Dependency\Dependency.psm1 -force
+ Import-Module $Path\Dependency\Dependency.psd1 -force
 Import-Module $Path\PSMap\PSMap.psd1 -force
 
 
