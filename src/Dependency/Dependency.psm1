@@ -1,4 +1,4 @@
-﻿# Add-Type -AssemblyName System.ComponentModel.DataAnnotations
+# Add-Type -AssemblyName System.ComponentModel.DataAnnotations
 # [System.ComponentModel.DataAnnotations.KeyAttribute]
 #todo 'identité composite',Unicité ?
 #                             Module Name Or Module,Version,Guid
@@ -29,7 +29,7 @@ $Script:lg4n_ModuleName=$MyInvocation.MyCommand.ScriptBlock.Module.Name
 $InitializeLogging=[scriptblock]::Create("${function:Initialize-Log4Net}")
 $Params=@{
   RepositoryName = $Script:lg4n_ModuleName
-  XmlConfigPath = "$psScriptRoot\PSMapLog4Net.Config.xml"
+  XmlConfigPath = "$psScriptRoot\DependencyLog4Net.Config.xml"
   DefaultLogFilePath = "$psScriptRoot\Logs\${Script:lg4n_ModuleName}.log"
   Scope='Script'
 }
@@ -402,7 +402,7 @@ Function New-NamespaceDependency{
        Name= $AssemblyName.Name
        Version= $AssemblyName.Version
        File=$null
-       Type='Reﬂection'
+       Type='Reflection'
     }
  }
 }
@@ -613,6 +613,7 @@ function ConvertTo-DependencyObjectMap{
 # 'ModuleStaticParameterBinder';
 # 'ProcessStaticParameterBinder';
 # 'AddTypeStaticParameterBinder'
+# ps1mxl
      Default { throw 'Not implementerd'}
  }
 }
@@ -625,7 +626,7 @@ function Format-Dependency{
 }
 
 Function OnRemove {
-  Stop-Log4Net $Script:lg4n_ModuleName
+  Stop-Log4Net $Script:lg4n_ModuleName 
 }#OnRemovePsIonicZip
 
 # Section  Initialization
