@@ -1,3 +1,4 @@
+
 function Set-FileWrong
 {
     [CmdletBinding(SupportsShouldProcess=$true)]
@@ -7,8 +8,5 @@ function Set-FileWrong
         [Parameter(Mandatory=$true)]
         $Path
     )
-    # function test {}
-     "String" | Out-File -FilePath $FilePath
+     'test'
 }
-dir |ForEach-Object {$_.name}
-Set-FileWrong
