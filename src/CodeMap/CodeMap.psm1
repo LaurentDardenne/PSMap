@@ -12,7 +12,7 @@ $Params=@{
 &$InitializeLogging @Params
 
 
-Function New-CalledFunction{
+Function New-CalledCommand{
     param(
          [Parameter(Mandatory=$True,position=0)]
         $Name,
@@ -21,15 +21,15 @@ Function New-CalledFunction{
         $Container,
 
          [Parameter(position=2)]
-        $CalledFunction=$null
+        $CalledCommand=$null
     )
 
-    Write-warning "CalledFunction $name -> $CalledFunction"
+    Write-warning "CalledCommand $name -> $CalledCommand"
     [pscustomObject]@{
-      PSTypeName='FunctionDependency';
+      PSTypeName='CommandDependency';
       Name=$Name;
       Container=$Container;
-      CalledFunction=$CalledFunction
+      CalledCommand=$CalledCommand
     }
 }
 Function New-FunctionDefinition{
@@ -83,7 +83,7 @@ Function ConvertTo-Vertex {
 
 function ConvertTo-FunctionObjectMap {
   #Renvoit 2 type d'objets:
-  # une définition de fonction et les appels de fonction ( de commande + précisément) contenus dans cette définition.
+  # une définition de fonction et les appels de commande (ce peut être une fonction) contenus dans cette définition.
   # Le propriétaire/conteneur est le script analysé.
   param (
       # To retrieve the Vertices list build by a PSADigraph.FunctionReferenceDigraph instance.
@@ -100,6 +100,13 @@ function ConvertTo-FunctionObjectMap {
   $Vertices= $CodeMap.Digraph.GetVertices() 
   $Container=$CodeMap.Container
    
+  if ($Vertices.Count -eq 0)
+  { 
+     #Le script doit contenir au moins une commande ou une défintion de fonction sinon vertices sera vide
+    Write-Verbose "The code container do not has neither command nor function definition."
+    return
+  }
+
   foreach ($vertex in $Vertices )
   {  
     if ($Function -and ($Vertex.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
@@ -113,7 +120,8 @@ function ConvertTo-FunctionObjectMap {
     { continue }
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
     Write-Debug "`t has '$($CodeMap.Digraph.GetNeighbors($Vertex).count)' neighbors"
-    $Parent=$Vertex.Ast.Parent.Parent.Parent
+    #Si ast.parent.parent.parent.parent est $null on est dans la définition du script (main)
+    $Parent=$Vertex.Ast.Parent.Parent.Parent #todo peut-on simplifier ? décrire l'usage de parent
     Write-Debug "`t try to define `$Vertex.Ast.Parent.Parent.Parent" 
     if ($null -ne $Parent) 
     { 
@@ -122,6 +130,11 @@ function ConvertTo-FunctionObjectMap {
       {
         Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
         New-FunctionDefinition -Name $Parent.Name -Container $Container -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
+      }
+      else 
+      {
+         Write-Debug "`tCall '$( $Vertex.Name)'' type $($Vertex.Ast.Gettype().fullname)"
+         New-CalledCommand -Name $Vertex.Name -Container $Container
       }
     }
     else 
@@ -137,7 +150,6 @@ function ConvertTo-FunctionObjectMap {
           New-FunctionDefinition -Name $CurrentFunctionName -Container $Container 
         }
       }
-      #continue
     }
     foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
     {
@@ -150,7 +162,7 @@ function ConvertTo-FunctionObjectMap {
       { continue }
 
       Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
-      New-CalledFunction -Name $CurrentFunctionName -Container $Container -CalledFunction @(New-CalledFunction -Name $CommandCalled.Name )
+      New-CalledCommand -Name $CurrentFunctionName -Container $Container -CalledCommand @(New-CalledCommand -Name $CommandCalled.Name )
     }
   }  
 }
