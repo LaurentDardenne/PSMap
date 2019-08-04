@@ -1,0 +1,1 @@
+New-MyObject -Name Test
