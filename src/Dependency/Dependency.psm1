@@ -38,7 +38,7 @@ $Params=@{
 #todo doit pointer sur le contexte de l'appelant
 $sbIsScriptDotSource={ ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript') }
 
-#codemap filtrer les commande du runtime 
+#codemap filtrer les commandes du runtime 
 $script:RuntimeModules=@(
  'Microsoft.PowerShell.Core',
  'Microsoft.PowerShell.Diagnostics',
@@ -54,7 +54,36 @@ $script:RuntimeModules=@(
  'PSWorkflow',
  'PSWorkflowUtility'
 )
+<#
+todo : ForEach-Object Where-Object 
+ si on filtre sur le cmdlet du runtime on doit préciser au moins une fois lesquels sont utilisés
+Cmdlet          Compare-Object                                     3.1.0.0    Microsoft.PowerShell.Utility
+Cmdlet          ForEach-Object                                     3.0.0.0    Microsoft.PowerShell.Core
+Cmdlet          Group-Object                                       3.1.0.0    Microsoft.PowerShell.Utility
+Cmdlet          Measure-Object                                     3.1.0.0    Microsoft.PowerShell.Utility
+Cmdlet          New-Object                                         3.1.0.0    Microsoft.PowerShell.Utility
+Cmdlet          Select-Object                                      3.1.0.0    Microsoft.PowerShell.Utility
+Cmdlet          Sort-Object                                        3.1.0.0    Microsoft.PowerShell.Utility
+Cmdlet          Tee-Object                                         3.1.0.0    Microsoft.PowerShell.Utility
+Cmdlet          Where-Object                                       3.0.0.0    Microsoft.PowerShell.Core
 
+todo dependance : cf. Imbrication1.ps1
+
+S'il existe + Import-Module avec des noms différents, le graph ne contient qu'une référence de Import-Moudle sans le nom de module
+certaine commande définissant une dépendance (import-module, add-type) sont cité comlme commande dans le graph de fonctio net dans la liste des dépendances
+il est présent dans les 2 cas mais n'a pas la même signification.
+
+note : Test\SourceCode\Imbrication1.ps1
+Si une fonction refédinie un même nom de fonction, les liens sont faux la dernière trouvée pointe sur le premier noeud ajouté, car le nom de vertex existe déjà.
+cf digraph.
+Utiliser un nom complet : s.f° ou m.f° ? Le nom du digraph est complet mais pas lors de sa visualisation
+ Vertex.FullName= Test-Three.Test-One.Test-Two
+ Vertex.Name= Test-Two
+ 
+ Vertex.FullName=Test-Three2.Test-One.Test-Two 
+ Vertex.Name=Test-Two 
+
+#>
 
 function Get-AST {
 #from http://becomelotr.wordpress.com/2011/12/19/powershell-vnext-ast/
