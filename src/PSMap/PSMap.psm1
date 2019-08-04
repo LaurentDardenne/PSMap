@@ -19,8 +19,8 @@ $Params=@{
 #
 #Need PSAutograph module, wrapper for MSagl (Microsoft Automatic Graph Layout)
 $ObjectMap = @{
-  "FunctionDependency" = @{
-     Follow_Property = 'CalledFunction'
+  "CommandDependency" = @{
+     Follow_Property = 'CalledCommand'
      Follow_Label = 'Call'
      Label_Property = 'Name'
   }
