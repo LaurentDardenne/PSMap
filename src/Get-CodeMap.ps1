@@ -1,5 +1,3 @@
-# Avoids one circular dependency, between the modules 'CodeMap' and 'dependency' 
-#todo refactoring ?
 #todo Pour codemap, ajouter un intermédiaire entre les différents outils de visu, codemap ne doit rien connaitre des outils il produit juste des listes de dépendances
 #     Sous réserve que codemap puisse fournir les données nécessaires aux différents outils CQFD !   
 
@@ -19,14 +17,15 @@ $File='..\Test\SourceCode\CommandsDependencies.ps1'
 #$File='.\Test\SourceCode\NestedCall\NestedCall.ps1'
 $file='..\Test\SourceCode\Imbrication1.ps1'
 #$file='.\Test\SourceCode\Imbrication.ps1'
-$file='G:\PS\PSMap\src\Dependency\Dependency.psm1'
+#$file='G:\PS\PSMap\src\Dependency\Dependency.psm1'
+#$file='G:\PS\PSMap\Test\SourceCode\ScriptContainsOnlyStatements.ps1'
+
 
 $CodeMap=Get-CodeMap -Path $File
 
-todo considére un appel de script comme une fonction...
 #Exclue une fonction qui génére du bruit ( trop de liens) todo peut être l'ajouter une fois avec une indication ?
 # -Function ne considère que les déclarations de fonction et pas tous les appels de cmdlets connue ou inconnues.
-$FunctionGraph=ConvertTo-FunctionObjectMap -CodeMap $CodeMap -Exclude 'Write-Log' #-Function 
+$FunctionGraph=ConvertTo-FunctionObjectMap -CodeMap $CodeMap -Exclude 'Write-Log' # -Function 
 
 $viewer = New-MSaglViewer
 $g1 = New-MSaglGraph
