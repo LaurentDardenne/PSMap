@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<DirectedGraph xmlns="http://schemas.microsoft.com/vs/2009/dgml">
+  <Nodes>
+    <Node Id="a" Label="a" Background="Blue"/>
+    <Node Id="b" Label="b" NodeRadius="16"/>
+    <Node Id="c" Label="c" NodeRadius="0"/>
+    <Node Id="d" Label="d" NodeRadius="4"/>
+    <Node Id="c1" Label="c" NodeRadius="8"/>
+    <Node Id="d1" Label="d" NodeRadius="24"/>
+    <Node Id="e" Label="e" NodeRadius="32"/>
+    <Node Id="f" Label="f" NodeRadius="12"/>
+
+    <Node Id="GroupA" Group="Expanded" />
+    <Node Id="GroupB" Group="Expanded" />
+    <Node Id="GroupC" Group="Expanded" />
+  </Nodes>
+  <Links>
+    <Link Source="a" Target="b" />
+    <Link Source="a" Target="c" />
+    <Link Source="a" Target="d" />
+    <Link Source="c" Target="d" />
+    <Link Source="c1" Target="d1" />
+    <Link Category="Contains" Source="GroupA" Target="c" />
+    <Link Category="Contains" Source="GroupA" Target="d" />
+    <Link Category="Contains" Source="GroupB" Target="c1" />
+    <Link Category="Contains" Source="GroupB" Target="d1" />
+    <Link Category="Contains" Source="GroupC" Target="e" />
+    <Link Category="Contains" Source="GroupC" Target="f" />
+
+    <Link Category="Contains" Source="GroupA" Target="GroupC" />
+  </Links>
+</DirectedGraph>
