@@ -12,6 +12,7 @@ Function Test-One {
   }
   Test-Two
  }
+test-one
 
 #  Function Test-Four{
 #   Function Test-Two {
