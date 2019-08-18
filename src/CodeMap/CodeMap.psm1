@@ -17,17 +17,21 @@ Function New-CalledCommand{
          [Parameter(Mandatory=$True,position=0)]
         $Name,
         
-        [Parameter(position=1)]
+        [Parameter(Mandatory=$True,position=1)]
+        $Label,
+        
+        [Parameter(position=2)]
         $Container,
 
-         [Parameter(position=2)]
+         [Parameter(position=3)]
         $CalledCommand=$null
     )
 
-    Write-warning "CalledCommand $name -> $CalledCommand"
+    Write-Debug "CalledCommand $name -> $CalledCommand label -> $Label"
     [pscustomObject]@{
       PSTypeName='CommandDependency';
       Name=$Name;
+      Label=$Label
       Container=$Container;
       CalledCommand=$CalledCommand
     }
@@ -37,21 +41,26 @@ Function New-FunctionDefinition{
          [Parameter(Mandatory=$True,position=0)]
         $Name,
 
-        [Parameter(position=1)]
-        $Container,
+        [Parameter(Mandatory=$True,position=1)]
+        $Label,
 
         [Parameter(position=2)]
+        $Container,
+
+        [Parameter(position=3)]
          $FunctionDefined=$null
     )
   
-    Write-warning "FunctionDefinition  $name -> $FunctionDefined"
+    Write-Debug "FunctionDefinition  $name -> $FunctionDefined label -> $Label"
     [pscustomObject]@{
       PSTypeName='FunctionDefinition';
       Name=$Name;
+      Label=$Label
       Container=$Container;
       FunctionDefined=$FunctionDefined
     }
 }
+
 Function New-FileDependency{
     param(
          [Parameter(Mandatory=$True,position=0)]
@@ -60,7 +69,7 @@ Function New-FileDependency{
         $Usedfile=$null
     )
   
-    Write-warning "FileDependency  $name -> $UsedFile"
+    Write-Debug "FileDependency  $name -> $UsedFile"
     [pscustomObject]@{
       PSTypeName='Usedfile';
       Name=$Name;
@@ -81,6 +90,31 @@ Function ConvertTo-Vertex {
     $funcDigraph.GetVertices() #Vertex=function name
 }
 
+function Get-Parent {
+  #return the parent of a vertex : GrandParent.Parent.Child -> GrandParent.Parent
+  param ($name)
+ 
+  $Pos=$Name.LastIndexOf('.')
+ if ($Pos -eq -1) 
+ {return $null}
+ else
+ {return $Name.Remove($Pos)}
+}
+
+function Get-Child {
+  #return the last part of a vertex name : GrandParent.Parent.Child -> Child
+  param ($name)
+ 
+  $Index=-1; #Last part of a name 
+  try {
+    $Result=$Name.Split('.')[$Index] 
+  }
+  catch [System.IndexOutOfRangeException]
+  { $Result=$null }
+  Return $Result 
+}
+
+
 function ConvertTo-FunctionObjectMap {
   #Renvoit 2 type d'objets:
   # une définition de fonction et les appels de commande (ce peut être une fonction) contenus dans cette définition.
@@ -93,16 +127,39 @@ function ConvertTo-FunctionObjectMap {
       [Switch] $Function,
 
        #To exclude functions that generate noise in the display of the graph.
-      [string[]] $Exclude=@()
-  ) 
+      [string[]] $Exclude=@(),
 
+       #To exclude runtime command: $CmdInfo.Source -notmatch '^Microsoft\.PowerShell\.'
+      [switch] $noRuntime
+  ) 
+ function Remove-RuntimeCommand  {
+   param (
+    $Vertices
+   )
+    #todo cache des commandes connue et inconnues (cmd.Unknown=$true)
+    #todo cache des fontions du runtime, dans ce cas  : (Dir function:Clear-Host).HelpFile pointe sur ‘System.Management.Automation.dll-Help.xml’
+   foreach ($Vertex in $Vertices)
+   {
+     try {
+      $CmdInfo=Get-Command $Vertex.Name -ErrorAction Stop
+      If ($CmdInfo.Source -notmatch '^Microsoft\.PowerShell\.') #todo celle préfixée Modulename\Cmdname ?
+      { write-Output $Vertex }  
+     } catch [System.Management.Automation.CommandNotFoundException] {
+      write-Output $vertex #todo cache
+     }
+   }
+  }
    #Here, one  vertex is a the function name
   $Vertices= $CodeMap.Digraph.GetVertices() 
+
+   # On filtre à chaque appel
+  if ($noRuntime)
+  { $Vertices=Remove-RuntimeCommand $Vertices}
   $Container=$CodeMap.Container
    
   if ($Vertices.Count -eq 0)
   { 
-     #Le script doit contenir au moins une commande ou une défintion de fonction sinon vertices sera vide
+     #Le script doit contenir au moins une commande ou une définition de fonction
     Write-Verbose "The code container do not has neither command nor function definition."
     return
   }
@@ -115,54 +172,51 @@ function ConvertTo-FunctionObjectMap {
        continue 
     }
 
+    # les noms de commande contenant des noms de fichier doivent être en entier sinon on coupe sur l'extension '.ps1'
+    #le label doit venir du vertex
     $CurrentFunctionName=$Vertex.Name    
     if ($CurrentFunctionName -in $Exclude)
     { continue }
     Write-Debug "main $CurrentFunctionName type $($Vertex.ast.Gettype().fullname)" 
     Write-Debug "`t has '$($CodeMap.Digraph.GetNeighbors($Vertex).count)' neighbors"
-    #Si ast.parent.parent.parent.parent est $null on est dans la définition du script (main)
-    $Parent=$Vertex.Ast.Parent.Parent.Parent #todo peut-on simplifier ? décrire l'usage de parent
-    Write-Debug "`t try to define `$Vertex.Ast.Parent.Parent.Parent" 
-    if ($null -ne $Parent) 
-    { 
-      Write-Debug "`t 3 parent  $($Parent.Gettype().fullname)" 
-      if ($Parent -is [System.Management.Automation.Language.FunctionDefinitionAst] )
-      {
+    $LabelFunction=Get-Child -Name $CurrentFunctionName   #Simple name of a function
+    if ($Vertex.Ast -is [System.Management.Automation.Language.FunctionDefinitionAst] )
+    {
         Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
-        New-FunctionDefinition -Name $Parent.Name -Container $Container -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName)
-      }
-      else 
-      {
-         Write-Debug "`tCall '$( $Vertex.Name)'' type $($Vertex.Ast.Gettype().fullname)"
-         New-CalledCommand -Name $Vertex.Name -Container $Container
-      }
+        $Parent=Get-Parent -Name $CurrentFunctionName #Full name defining the nesting of calls
+        if (($null -ne $Parent) -and ($Parent -ne $CurrentFunctionName))
+        { 
+          $LabelParent=Get-Child -Name $Parent
+          New-FunctionDefinition -Name $Parent -Label $LabelParent -Container $Container -FunctionDefined @(New-FunctionDefinition -Name $CurrentFunctionName -Label $LabelFunction) 
+        }
+        else
+        { New-FunctionDefinition -Name $CurrentFunctionName -Label $LabelFunction}
     }
     else 
     {
-      Write-Debug "`t try to define `$Vertex.Ast.Parent.Parent" 
-      $Parent=$Vertex.Ast.Parent.Parent
-      if ($null -ne $Parent) 
-      { 
-        Write-Debug "`t 2 parent  $($Parent.Gettype().fullname)" 
-        if ($Parent -is [System.Management.Automation.Language.ScriptBlockAst] )
-        {
-          Write-Debug "`t $($Parent.Name) define $CurrentFunctionName" 
-          New-FunctionDefinition -Name $CurrentFunctionName -Container $Container 
-        }
-      }
+        Write-Debug "`tCall '$( $CurrentFunctionName)'' type $($Vertex.Ast.Gettype().fullname)"
+        New-CalledCommand -Name $CurrentFunctionName -Label $LabelFunction -Container $Container
     }
-    foreach ($CommandCalled in $CodeMap.Digraph.GetNeighbors($Vertex) )
+
+    if ($noRuntime)
+    { $Neighbors=Remove-RuntimeCommand $CodeMap.Digraph.GetNeighbors($Vertex) } #Todo SHORT NAME
+    else
+    { $Neighbors=$CodeMap.Digraph.GetNeighbors($Vertex) }
+
+    foreach ($CommandCalled in $Neighbors )
     {
       Write-Debug "Neighbors $CommandCalled" 
 
       if ($Function -and  ($CommandCalled.Ast -isnot [System.Management.Automation.Language.FunctionDefinitionAst]))
       { continue }
       
-      if ($CommandCalled.Name -in $Exclude)
+      $CurrentCommandName=$CommandCalled.Name  
+      if ($CurrentCommandName -in $Exclude)
       { continue }
-
-      Write-Debug "`tCall  $CommandCalled type $($CommandCalled.Ast.Gettype().fullname)"
-      New-CalledCommand -Name $CurrentFunctionName -Container $Container -CalledCommand @(New-CalledCommand -Name $CommandCalled.Name )
+      $LabelCommand=Get-Child -Name $CurrentCommandName
+      Write-Debug "`tCall $CurrentCommandName type $($CommandCalled.Ast.Gettype().fullname)"
+      Write-Debug "`t'$CurrentFunctionName' Call '$CurrentCommandName'"
+      New-CalledCommand -Name $CurrentFunctionName -Label $LabelFunction -Container $Container -CalledCommand @(New-CalledCommand -Name $CurrentCommandName -Label $LabelCommand)
     }
   }  
 }
@@ -220,6 +274,12 @@ Function New-CodeMap{
       ErrorAst=$ErrorAst
     }
 }# New-CodeMap
+
+function Group-FunctionGraph{
+  param ($FunctionGraph)
+  $FunctionGraph|
+   Group-Object @{e={$_.pstypenames[0]}}
+}
 
 function Format-FunctionGraph{
   param ($FunctionGraph)
