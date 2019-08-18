@@ -352,6 +352,22 @@ namespace PSADigraph
         private Stack<Vertex> functionVisitStack;
 
         /// <summary>
+        /// Construct a node name from all parent function names.
+        /// for a F° 'GrandParent' that call F° 'Parent' that call F° 'Child' we build
+        /// GrandParent.Parent.Child
+        /// </summary>
+        /// <param name="Stack"></param>
+        /// <returns>The call stack object of the functions found bye the AST visitor</returns>
+        private string BuildNameFromParents(Stack<Vertex> Stack)
+        {
+            //todo prendre la dernière partie du nom : Main.Parent.Child -> Child
+            List<string> Names = Stack.Select(vertex => vertex.Name.Split('.').Last()).ToList();
+            Names.Reverse();
+            return String.Join(".", Names);
+        }
+
+
+        /// <summary>
         /// Checks if the AST being visited is in an instance FunctionDefinitionAst type
         /// </summary>
         private bool IsWithinFunctionDefinition()
@@ -405,6 +421,9 @@ namespace PSADigraph
         /// </summary>
         public void AddVertex(Vertex vertex)
         {
+#if DEBUG
+            AppLogger.DebugFormat("Add Vertex Name {0} Type {1}", vertex.Name, vertex.Ast.GetType().FullName);
+#endif
             bool containsVertex = false;
 
             // if the graph contains a vertex with name equal to that
@@ -417,14 +436,14 @@ namespace PSADigraph
                     containsVertex = true;
 #if DEBUG
                     if (vertex.Ast != null)
-                        AppLogger.DebugFormat("AddVertex Name {0} Type {1}", vertex.Name, vertex.Ast.GetType().FullName);
+                        AppLogger.DebugFormat("Test vertices() Name {0} Type {1}", vertex.Name, vertex.Ast.GetType().FullName);
 #endif
                     if (vertex.Ast != null
                         && vertex.Ast is FunctionDefinitionAst)
                     {
                         v.Ast = vertex.Ast;
 #if DEBUG
-                        AppLogger.DebugFormat("AddVertex {0} functionAST", vertex.Name);
+                        AppLogger.DebugFormat("Update Vertex {0} functionAST", vertex.Name);
 #endif
                     }
                     break;
@@ -433,6 +452,10 @@ namespace PSADigraph
 
             if (!containsVertex)
             {
+#if DEBUG
+                if (vertex.Ast != null)
+                    AppLogger.DebugFormat("AddVertex Name {0} Type {1}", vertex.Name, vertex.Ast.GetType().FullName);
+#endif
                 digraph.AddVertex(vertex);
             }
         }
@@ -444,8 +467,14 @@ namespace PSADigraph
         /// <param name="toV">end of the edge</param>
         public void AddEdge(Vertex fromV, Vertex toV)
         {
+#if DEBUG
+            AppLogger.DebugFormat("Add edge");
+#endif
             if (!digraph.GetNeighbors(fromV).Contains(toV))
             {
+#if DEBUG
+            AppLogger.DebugFormat("Add edge from {0} to {1}",fromV.Name,toV.Name);
+#endif                
                 digraph.AddEdge(fromV, toV);
             }
         }
@@ -455,12 +484,34 @@ namespace PSADigraph
         /// </summary>
         public override AstVisitAction VisitFunctionDefinition(FunctionDefinitionAst ast)
         {
+#if DEBUG
+            AppLogger.DebugFormat("Call VisitFunctionDefinition");
+#endif
+            String CurrentNodeName;
             if (ast == null)
             {
                 return AstVisitAction.SkipChildren;
             }
 
-            var functionVertex = new Vertex(ast.Name, ast, IsWithinFunctionDefinition());
+            if (IsWithinFunctionDefinition())
+            {
+                CurrentNodeName = BuildNameFromParents(functionVisitStack) + "." + ast.Name;
+#if DEBUG
+                AppLogger.DebugFormat("Dans une fonction {0} -> {1}", ast.Name, CurrentNodeName);
+#endif
+            }
+            else
+            {
+#if DEBUG
+                CurrentNodeName = BuildNameFromParents(functionVisitStack) + "." + ast.Name;
+                AppLogger.DebugFormat("Pas dans une fonction {0} -> {1}", ast.Name, CurrentNodeName);
+#endif
+
+                CurrentNodeName = ast.Name;
+            }
+
+            //CurrentNodeName = ast.Name;
+            var functionVertex = new Vertex(CurrentNodeName, ast, IsWithinFunctionDefinition());
             functionVisitStack.Push(functionVertex);
             AddVertex(functionVertex);
             ast.Body.Visit(this);
@@ -473,6 +524,10 @@ namespace PSADigraph
         /// </summary>
         public override AstVisitAction VisitCommand(CommandAst ast)
         {
+            String CurrentNodeName;
+#if DEBUG
+            AppLogger.DebugFormat("Call VisitCommand");
+#endif
             if (ast == null)
             {
                 return AstVisitAction.SkipChildren;
@@ -487,12 +542,28 @@ namespace PSADigraph
                 return AstVisitAction.Continue;
             }
 
-            var vertex = new Vertex(cmdName, ast);
+            if (IsWithinFunctionDefinition())
+            {
+                CurrentNodeName = BuildNameFromParents(functionVisitStack) + "." + cmdName;
+#if DEBUG
+                AppLogger.DebugFormat("Dans une fonction {0} -> {1}", cmdName, CurrentNodeName);
+#endif
+            }
+            else
+            {
+#if DEBUG
+                CurrentNodeName = BuildNameFromParents(functionVisitStack) + "." + cmdName;
+                AppLogger.DebugFormat("Pas dans une fonction {0} -> {1}", cmdName, CurrentNodeName);
+#endif
+
+                CurrentNodeName = cmdName;
+            }
+            var vertex = new Vertex(CurrentNodeName, ast);
             AddVertex(vertex);
             if (IsWithinFunctionDefinition())
             {
 #if DEBUG
-                AppLogger.DebugFormat("VisitCommand {0} IsWithinFunctionDefinition", cmdName);
+                AppLogger.DebugFormat("VisitCommand {0} IsWithinFunctionDefinition", CurrentNodeName);
 #endif
                 AddEdge(GetCurrentFunctionContext(), vertex);
             }
