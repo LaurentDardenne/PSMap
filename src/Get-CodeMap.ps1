@@ -70,7 +70,7 @@ Set-Location  $Path
  Import-Module $Path\PSMap\PSMap.psd1 -force
  Import-Module $Path\DGML\DgmlDirectedGraph.psd1 -force
 
-$file='G:\PS\PSMap\Test\SourceCode\ScriptContainsOneFonctionAndOneCommandInsideParent.ps1'
+$file='..\Test\SourceCode\Imbrication1.ps1'
 
 
 #ajoute un main pour porter des liens
@@ -120,8 +120,13 @@ Set-MSaglGraphObjectWithNode -Graph $g1 -inputobject $FunctionGraph -objectMap $
 
 #todo fullname+label -> Add node id=fullname label = shortname
 
+#change the default layout SugiyamaLayoutSettings to Mds
+$Mds= new [Microsoft.Msagl.Layout.MDS.MdsLayoutSettings]::new()
+$Mds.AdjustScale= $true
+$g1.LayoutAlgorithmSettings=$Mds    
 Show-MSaglGraph $viewer $g1 > $null
 $g=Group-FunctionGraph $FunctionGraph;$g[1].group|fl
+
 
 #$Vertices= $CodeMap.Digraph.GetVertices() |% {$_}
 #$Neighbors=$CodeMap.Digraph.GetNeighbors($Vertices[0])|% {$_}
