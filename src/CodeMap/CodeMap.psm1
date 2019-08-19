@@ -133,6 +133,7 @@ function ConvertTo-FunctionObjectMap {
       [switch] $noRuntime
   ) 
  function Remove-RuntimeCommand  {
+   #todo Sauf celle de portant des info de ressources (I/O) et de dépendances de code
    param (
     $Vertices
    )
