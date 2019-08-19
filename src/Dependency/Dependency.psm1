@@ -487,7 +487,8 @@ function ConvertTo-AssemblyDependency {
   }
   else
   {
-      Write-Error "Foreach Expressions : unknown case : '$($Current)'"
+    #todo add log not an error
+    Write-Error "Foreach Expressions : unknown case : '$($Current)'"
     Continue 
   }
 }
@@ -504,10 +505,10 @@ function ConvertTo-CommandDependency {
       if ($CommandName -match 'Update-FormatData|Update-TypeData')
       { Write-Warning "todo ETS" }# Get-InformationETS $Command -Container $Container; Continue }  #todo
 
-      if ($CommandName -match 'Import-Module|IPMO')
+      elseif ($CommandName -match 'Import-Module|IPMO')
       { Get-InformationModule $Command -Container $Container; Continue } 
   
-      if ($CommandName -match 'Start-Process|saps|start')
+      elseif ($CommandName -match 'start|Start-Process|saps') #todo on peut avoir un apple via splatting 'Start @params'
       { Get-InformationProgram $Command ; Continue }
   
       try {
@@ -524,6 +525,7 @@ function ConvertTo-CommandDependency {
       if ($CommandName -match 'Add-Type')
       { Get-InformationDLL $Command ; Continue }
   }
+  #todo documenter ce cas/contexte
   if ($Command.CommandElements[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
   {
       try {
@@ -541,6 +543,7 @@ function ConvertTo-CommandDependency {
       Write-Debug "$_ "
       }
   }
+  #todo add log not a warning
   Write-Warning "Foreach Commands: unknown case: '$($Command)'"; Continue
 }
 
@@ -582,14 +585,21 @@ Function Read-Dependency {
    # todo backup location ?
   [Environment]::CurrentDirectory = $Container.FileInfo.DirectoryName
 
-  $Commands=$Ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.CommandAst] },$true)
+   #TODO add Visitor to speed up the analysis. Extend Digraph class ?
+
+  $Commands=$Ast.FindAll({ 
+     param($Ast) 
+     $Result=$Ast -is [System.Management.Automation.Language.CommandAst]
+     Write-Debug "is CommandAst ? : $Result $($AST)"
+     $Result},$true)
 
   #TODO     &$function:bob  $function:bob.InvokeXXX()
   $FunctionWithAssign=$ast.FindAll( { param($Ast) 
-    ($Ast -is [System.Management.Automation.Language.AssignmentStatementAst]) -and
+    $Result=($Ast -is [System.Management.Automation.Language.AssignmentStatementAst]) -and
     ($Ast.Left.VariablePath.DriveName -eq 'function') -and 
     ($Ast.Right.Expression.StaticType.fullname -eq 'System.Management.Automation.ScriptBlock')
-    },$true)
+    Write-Debug "is Function with Assignment ? : $Result $($AST)"
+    $Result},$true)
    #$s.Left.VariablePath.UserPath -replace '^function:',''    
 
   #Return Microsoft.PowerShell.Commands.ModuleSpecification
@@ -613,10 +623,14 @@ Function Read-Dependency {
   #Affectation
   # [System.Management.Automation.Language.AssignmentStatementAst]  $var= [System.Management.Automation.Language.CommandExpressionAst] 
 
-  $Expressions=$Ast.FindAll({ param($Ast) $Ast -is [System.Management.Automation.Language.InvokeMemberExpressionAst] },$true)
-  foreach ($Current in $Expressions)
-  { ConvertTo-AssemblyDependency -Expression $Current }
-
+  $Expressions=$Ast.FindAll({ 
+    param($Ast) 
+    $Result=$Ast -is [System.Management.Automation.Language.InvokeMemberExpressionAst] 
+    Write-Debug "is InvokeMemberExpressionAst ? : $Result $($AST)"
+    $Result },$true)
+  
+    foreach ($Current in $Expressions)
+    { ConvertTo-AssemblyDependency -Expression $Current }
 }
 
 function ConvertTo-DependencyObjectMap{
