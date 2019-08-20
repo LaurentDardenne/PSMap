@@ -500,6 +500,8 @@ function ConvertTo-CommandDependency {
   )
 
   $CommandName=$Command.GetCommandName()
+  todo peut renvoyer une string contenant 'ModuleName\Cmd' -> Microsoft.PowerShell.Utility\Get-Member
+  une fonction peut avoir ce nom : function Microsoft.PowerShell.Utility\Get-Member{}
   if ($null -ne $CommandName)
   {
       if ($CommandName -match 'Update-FormatData|Update-TypeData')
@@ -525,7 +527,9 @@ function ConvertTo-CommandDependency {
       if ($CommandName -match 'Add-Type')
       { Get-InformationDLL $Command ; Continue }
   }
-  #todo documenter ce cas/contexte
+
+  #Pour "if (Microsoft.PowerShell.Utility\Get-Member -InputObject $requiredModuleObject -Name 'ModuleName')"
+  #Microsoft.PowerShell.Utility\Get-Member est le détail d'une entrée de type CommandAst
   if ($Command.CommandElements[0] -is [System.Management.Automation.Language.StringConstantExpressionAst])
   {
       try {
@@ -640,7 +644,6 @@ function ConvertTo-DependencyObjectMap{
     $CodeMap
   )
 
-  #todo visu $codemap.Dependencies|group @{e={$_.pstypenames[0]}}
   Switch ($_.pstypenames[0])
   {
      'Assembly' { }
@@ -659,6 +662,12 @@ function ConvertTo-DependencyObjectMap{
 # ps1mxl
      Default { throw 'Not implementerd'}
  }
+}
+
+function Group-Dependency{
+  param ($Dependencies)
+  $Dependencies|
+   Group-Object @{e={$_.pstypenames[0]}}
 }
 
 function Format-Dependency{
