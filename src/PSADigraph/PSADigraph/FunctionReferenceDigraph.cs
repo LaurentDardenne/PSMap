@@ -285,6 +285,10 @@ namespace PSADigraph
             name = String.Empty;
         }
 
+        //todo add parent & label
+        // name est le nom complet
+        // parent est un nom complet à partir du nom complet
+        //le label et le nom de la commande AST
         public Vertex(string name, Ast ast)
         {
             if (name == null)
