@@ -71,7 +71,9 @@ Set-Location  $Path
  Import-Module $Path\PSMap\PSMap.psd1 -force
  Import-Module $Path\DGML\DgmlDirectedGraph.psd1 -force
 
-$file='..\Test\SourceCode\Imbrication1.ps1'
+#$file='..\Test\SourceCode\Imbrication1.ps1'
+$file='..\Test\SourceCode\CallMainFunctionInsideNestedFunction.ps1'
+#todo regrouper les cas dans un seul script
 
 #Ajoute un main pour porter des liens
 #L'ast efface implicitement le contener portant ces liens.
@@ -119,7 +121,7 @@ Set-MSaglGraphObjectWithNode -Graph $g1 -inputobject $FunctionGraph -objectMap $
 
 
 #change the default layout SugiyamaLayoutSettings to Mds
-$Mds= new [Microsoft.Msagl.Layout.MDS.MdsLayoutSettings]::new()
+$Mds=[Microsoft.Msagl.Layout.MDS.MdsLayoutSettings]::new()
 $Mds.AdjustScale= $true
 $g1.LayoutAlgorithmSettings=$Mds    
 Show-MSaglGraph $viewer $g1 > $null
