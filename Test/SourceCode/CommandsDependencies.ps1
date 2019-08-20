@@ -138,11 +138,17 @@ $assembly = [Reflection.Assembly]::LoadFile("c:\path\file.dll")
 #GetCommandeName() -eq $nul|
 & $foo
 & (gmo SomeModule) Bar
-<# todo
+<# 
+todo 1
 $exe = "H:\backup\scripts\vshadow.exe“
 &$exe -p -script=H:\backup\scripts\vss.cmd E: M: P:
 &"C:\Program Files (x86)\Notepad++\notepad++.exe"
 &"H:\backup\scripts\sbrun.exe" --% -mdn etc
+
+todo 2
+$hashParams@={ Name=value}
+start-process @params'  
+
 #>
 
 #function definition through assignment:
@@ -150,4 +156,8 @@ $function:bob = {param ($name) Write-Host "Hi $name, I'm Bob!"}
 
 #todo dépendances dans les fichiers de types .ps1xml (ETS)
 
-#todo une classe PS contient des définitions de fonctions...
+
+Microsoft.PowerShell.Utility\Get-Member
+#Note:  une fonction peut avoir ce nom, mais PSSA émet un warning :
+function Microsoft.PowerShell.Utility\Get-Member{}
+#todo précédence de la function sur le cmdlet peut-elle fausser la recherche du module associé via get-commande ?
