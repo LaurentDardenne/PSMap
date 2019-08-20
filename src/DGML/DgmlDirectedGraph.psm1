@@ -3,6 +3,9 @@
 <#
 Note
  DgmlUtils.ClrBoolean : contains true/false and True/False values
+ 
+todo: Understanding Directed Graph Query Language (DGQL) ?
+ https://docs.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-2010/dd409453(v=vs.100)#understanding-directed-graph-query-language-dgql
 #>
 
 Function New-DgmlGraph {
