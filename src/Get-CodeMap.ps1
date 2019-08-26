@@ -125,8 +125,11 @@ $Mds=[Microsoft.Msagl.Layout.MDS.MdsLayoutSettings]::new()
 $Mds.AdjustScale= $true
 $g1.LayoutAlgorithmSettings=$Mds    
 Show-MSaglGraph $viewer $g1 > $null
-$g=Group-FunctionGraph $FunctionGraph;$g[1].group|Format-List
+$g=Group-FunctionGraph $FunctionGraph
+$g[0].group|Select-Object Name,@{n='Define';e={$_.FunctionDefined.Name}}
+$g[1].group|Select-Object Name,@{n='Call';e={$_.CalledCommand.Name}}
 
+#todo use case : Ajout test de redéfintion de function dans la même portée.
 
 #$Vertices= $CodeMap.Digraph.GetVertices() |% {$_}
 #$Neighbors=$CodeMap.Digraph.GetNeighbors($Vertices[0])|% {$_}
@@ -139,10 +142,6 @@ $g=Group-FunctionGraph $FunctionGraph;$g[1].group|Format-List
 #------DGML
 
 
-$Graph= New-DgmlGraph -Title 'Test'
-$Nodes= New-DgmlNodeList
-$Links= New-DgmlLinkList 
-
 #imbrication plutot que des liens ( sous-graph)
 # si une entrée, un vertex, définie un voisin de type fonction, alors le nom de l'entrée est un groupe ( sous-graph)
 # todo  appels interne qui ne sont pas des fonctions, les liens externes connue comme tel script,module,dll et ressources fichier, 
@@ -150,28 +149,35 @@ $Links= New-DgmlLinkList
 #       on aura donc 2 entrées, une pour porter la notion d'imbrication l'autre pour l'appel dans la fonction parente.
 #        Dans ce cas c'est une présentation différente de celle affichée par Show-MSaglGraph,
 #        les liens de relations étant moins prononcées, car on aura + d'imbrications de 'boites' que de liens ('fléches') entre 'boîtes'.
+
+$Graph= New-DgmlGraph -Title 'Test'
+$Nodes= New-DgmlNodeList
+$Links= New-DgmlLinkList 
+
 foreach ($current in $codemap.DiGraph.GetVertices())
 {
+  $Label=Get-Child -Name $Current.Name
   foreach ($Neighbor in $codemap.DiGraph.GetNeighbors($current))
   {
     if ($Neighbor.IsNestedFunctionDefinition)
     {
       Write-Debug "`tNode Group  '$($Current.Name)'"
-      Add-DgmlNode -Nodes $Nodes -Properties @{id=$Current.Name;Group="Expanded";GroupSpecified=$true}
+      Add-DgmlNode -Nodes $Nodes -Properties @{id=$Current.Name;Label=$Label;Group="Expanded";GroupSpecified=$true}
       Write-Debug "`tGroup '$($Current.Name)' contains '$($Neighbor.Name)'"
       Add-DgmlLink -Links $Links -Properties @{Category1='Contains';Source=$Current.Name;Target=$($Neighbor.Name)}
     }
     else
     { 
       Write-Debug "`tadd Node Call '$($Current.Name)' to  '$($Neighbor.Name)'"
-      Add-DgmlNode -Nodes $Nodes -Properties @{id=$current.name} 
+      Add-DgmlNode -Nodes $Nodes -Properties @{id=$current.name;Label=$Label} 
       Add-DgmlLink -Links $Links -Properties @{Source=$Current.Name;Target=$($Neighbor.Name)} 
     }
   }   
 
   Write-Debug "name=$($current.name) <Node Id=`"$($current.name)`" />"
-  Add-DgmlNode -Nodes $Nodes -Properties @{id=$current.name} 
+  Add-DgmlNode -Nodes $Nodes -Properties @{id=$current.name;Label=$Label} 
 }
+
 
 $Graph.Nodes=$Nodes
 $Graph.Links=$Links
