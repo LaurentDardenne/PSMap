@@ -535,8 +535,8 @@ function ConvertTo-CommandDependency {
   )
 
   $CommandName=$Command.GetCommandName()
-  todo peut renvoyer une string contenant 'ModuleName\Cmd' -> Microsoft.PowerShell.Utility\Get-Member
-  une fonction peut avoir ce nom : function Microsoft.PowerShell.Utility\Get-Member{}
+  # todo peut renvoyer une string contenant 'ModuleName\Cmd' -> Microsoft.PowerShell.Utility\Get-Member
+  # une fonction peut avoir ce nom : function Microsoft.PowerShell.Utility\Get-Member{}
   if ($null -ne $CommandName)
   {
       if ($CommandName -match 'Update-FormatData|Update-TypeData')
