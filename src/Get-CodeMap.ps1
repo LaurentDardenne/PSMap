@@ -87,12 +87,16 @@ $text= Get-Content $file -Encoding utf8 -raw
 $CodeMap=Get-CodeMap -Path c:\temp\PSMmapTest.ps1 
 #$CodeMap=Get-CodeMap -Path $File
 
+New-DependenciesReport  $CodeMap
+#Invoke-Item 'Code map dependencies'.htlm
+
 #Exclue une fonction qui génére du bruit ( trop de liens) todo peut être l'ajouter une fois avec une indication ?
 # -Function ne considère que les déclarations de fonction et pas tous les appels de cmdlets connue ou inconnues.
 
 #todo  MyModule\F1.F2.F3
 dbgon
 $FunctionGraph=ConvertTo-FunctionObjectMap -CodeMap $CodeMap -Exclude 'Write-Log' # -Function 
+
 
 $viewer = New-MSaglViewer
 $g1 = New-MSaglGraph
