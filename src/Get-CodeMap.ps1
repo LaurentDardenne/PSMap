@@ -48,7 +48,6 @@
 # # #  Test-Deux
 # # "@ > c:\temp\PSMmapTest.ps1
 
-$File='..\Test\SourceCode\CommandsDependencies.ps1'
 #$File='.\Test\SourceCode\NestedCall\NestedCall.ps1'
 $file='..\Test\SourceCode\Imbrication1.ps1'
 #$file='..\Test\SourceCode\Imbrication.ps1'
@@ -70,13 +69,16 @@ Set-Location  $Path
  Import-Module $Path\Dependency\Dependency.psd1 -force
  Import-Module $Path\PSMap\PSMap.psd1 -force
  Import-Module $Path\DGML\DgmlDirectedGraph.psd1 -force
+. "$Path\New-DependenciesReport.ps1"
 
 #$file='..\Test\SourceCode\Imbrication1.ps1'
-$file='..\Test\SourceCode\CallMainFunctionInsideNestedFunction.ps1'
-#todo regrouper les cas dans un seul script
+$file='..\Test\SourceCode\CallMainFunctionInsideNestedFunction.ps1' #todo regrouper les cas dans un seul script
 
-#Ajoute un main pour porter des liens
-#L'ast efface implicitement le contener portant ces liens.
+$File='..\Test\SourceCode\CommandsDependencies.ps1'
+
+
+#Add a Main function to contains orphans edge/vertex
+#The ast implicitly erases the notion of container represented by the script / module
 $text= Get-Content $file -Encoding utf8 -raw
 @"
  function Main {
@@ -87,8 +89,10 @@ $text= Get-Content $file -Encoding utf8 -raw
 $CodeMap=Get-CodeMap -Path c:\temp\PSMmapTest.ps1 
 #$CodeMap=Get-CodeMap -Path $File
 
-New-DependenciesReport  $CodeMap
-#Invoke-Item 'Code map dependencies'.htlm
+New-DependenciesReport  $CodeMap |
+ Export-Document -Path $env:Temp -Format Html -Verbose
+
+Invoke-Item "$Env:Temp\Code map dependencies.html"
 
 #Exclue une fonction qui génére du bruit ( trop de liens) todo peut être l'ajouter une fois avec une indication ?
 # -Function ne considère que les déclarations de fonction et pas tous les appels de cmdlets connue ou inconnues.
