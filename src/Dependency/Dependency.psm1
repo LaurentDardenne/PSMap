@@ -228,6 +228,21 @@ Function Get-StaticParameterBinder{
   }
 }
 
+function ConvertTo-Hashtable {
+  param($KeyValuePairs)
+  
+  $H=@{}
+  $RegEx="^('|`")(.*)('|`")$"
+  $KeyValuePairs|
+   Foreach-Object {
+     $Key=$_.Item1.ToString() 
+      #Item2 contains an AST object, we must remove the string delimiters
+     $Value= ($_.Item2.toString()) -Replace $RegEx,'$2'
+     $H.Add($Key,$Value)
+   }
+   return ,$H
+}
+
 function Get-UsingStatementParameter{
 #The referenced file must exist when the AST is build
 #
@@ -239,6 +254,7 @@ function Get-UsingStatementParameter{
     [System.Management.Automation.Language.UsingStatementAst] $UsingStatement,
     $AstParseStringError
   )
+    Write-Debug "Get-UsingStatementParameter '$($UsingStatement.UsingStatementKind)'"
     Switch ($UsingStatement.UsingStatementKind)
     {
           # Assembly 0 A parse time reference to an assembly.
@@ -249,28 +265,31 @@ function Get-UsingStatementParameter{
 
           # Module 2 A parse time reference or alias to a module.
         'Module' {
-                   if ($null -ne $UsingStatement.ModuleSpecification) 
-                   { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.ModuleSpecification.KeyValuePairs) }
-                   elseif ( ($null -eq $UsingStatement.Alias) -and ($null -ne $UsingStatement.Name) )
-                   {
-                      #https://docs.microsoft.com/en-us/dotnet/api/system.management.automation.language.usingstatementast.name
-                      #Name 	: When Alias is null or ModuleSpecification is null, the item being used, otherwise the alias name.
-                     [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.Name) 
-                   }
-                   else {
-                     write-warning "This syntax of the 'using' statement is not supported." # Alias
-                   }
-             }
-
+                    if ($null -ne $UsingStatement.ModuleSpecification) 
+                    { 
+                       Write-Debug "`t ModuleSpecification '$($UsingStatement.ModuleSpecification.KeyValuePairs|out-string)'"
+                       $HashTable=ConvertTo-Hashtable $UsingStatement.ModuleSpecification.KeyValuePairs
+                       [Microsoft.PowerShell.Commands.ModuleSpecification]::New($HashTable) 
+                    }
+                    elseif ( ($null -eq $UsingStatement.Alias) -and ($null -ne $UsingStatement.Name) )
+                    {
+                       #https://docs.microsoft.com/en-us/dotnet/api/system.management.automation.language.usingstatementast.name
+                       #Name        : When Alias is null or ModuleSpecification is null, the item being used, otherwise the alias name.
+                       Write-Debug "`t ModuleSpecification alias null '$($UsingStatement.Name)'"
+                       [Microsoft.PowerShell.Commands.ModuleSpecification]::New($UsingStatement.Name) 
+                    }
+                    else 
+                    { Write-Warning "This syntax of the 'using' statement is not supported." } # Alias
+              }
 
           # Namespace 3 A parse time statement that allows specifying types without their full namespace.
         'Namespace' { New-NamespaceDependency -Using $UsingStatement }
 
           # Type 4 A parse time type alias (type accelerator).
         'Type' { Write-Error 'Not implemented in 5.1 or 6.2' }
-   }
+    }
 }
-
+  
 function Get-InformationModule{
   param(
     [System.Management.Automation.Language.CommandAst] $Command,
@@ -278,13 +297,17 @@ function Get-InformationModule{
   )
     $CommandElement=$Command.CommandElements[1]
     $TypeName=$CommandElement.GetType().Name
+    Write-Debug "Get-InformationModule $typename : $CommandElement"
     switch ($TypeName)
     {
         'ArrayLiteralAst'      {
                                     #todo Import-module File.ps1, File2.ps1
                                     Foreach ($Name in $Commandelement.Elements.value)
-                                    { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Name) }
-                               }
+                                    { 
+                                       Write-Debug "`t ModuleSpecification '$Name'"
+                                       [Microsoft.PowerShell.Commands.ModuleSpecification]::New($Name) 
+                                    }
+                                }
 
         'CommandParameterAst' {
                                     $StaticParameters=Get-StaticParameterBinder $Command -Module
@@ -295,34 +318,46 @@ function Get-InformationModule{
                                         #alors c'est une 'erreur' d'utilisation de IPMO comme IPMO File.sp1 peut l'être (confusion)
                                         if  (Test-ScriptName $StaticParameters.Name)
                                         { 
-                                             #Retrieve the current path
+                                              #Retrieve the current path
                                             $FileInfo=ConvertTo-FileInfo $StaticParameters.Name 
                                             #Import-module File.ps1 is equal to dotsource .ps1
                                             New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
                                         }
                                         else 
-                                        {   [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.Name) }
+                                        {  
+                                           Write-Debug "`t ModuleSpecification '$($StaticParameters.Name)'"
+                                           [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.Name) 
+                                        }
                                     }
                                     if( $Null -ne $StaticParameters.FullyQualifiedName)
-                                    { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($StaticParameters.FullyQualifiedName.KeyValuePairs) }
+                                    { 
+                                       Write-Debug "`t ModuleSpecification '$($StaticParameters.FullyQualifiedName.KeyValuePairs|Out-String)'"
+                                       $HashTable=ConvertTo-Hashtable $StaticParameters.FullyQualifiedName.KeyValuePairs
+                                       [Microsoft.PowerShell.Commands.ModuleSpecification]::New($HashTable) 
+                                    }
                               }                                        
 
         'HashtableAst'      {
-                               [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.KeyValuePairs)
+                                Write-Debug "`t ModuleSpecification '$($CommandElement.KeyValuePairs|Out-String)'"
+                                $HashTable=ConvertTo-Hashtable $CommandElement.KeyValuePairs
+                                [Microsoft.PowerShell.Commands.ModuleSpecification]::New($HashTable) 
                             }
 
         'StringConstantExpressionAst' { 
                                         $FileInfo=ConvertTo-FileInfo $CommandElement.Value
                                         if  (Test-ScriptName $FileInfo)
                                         { 
-                                           #Import-module File.ps1 is equal to dotsource .ps1
-                                           New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
+                                            #Import-module File.ps1 is equal to dotsource .ps1
+                                            New-InformationScript -FileInfo $FileInfo -InvocationOperator 'Dot'
                                         }
                                         else
-                                        { [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) }
+                                        { 
+                                          Write-Debug "`t ModuleSpecification '$($CommandElement.value)'"
+                                          [Microsoft.PowerShell.Commands.ModuleSpecification]::New($CommandElement.Value) 
+                                        }
                                       }        
 
-         default { Write-error "Get-InformationModule: the recognition of this type is not available: $($TypeName)"}
+          default { Write-error "Get-InformationModule: the recognition of this type is not available: $($TypeName)"}
     }
 }
 
