@@ -2,6 +2,29 @@
 TODO
 Défini le graph des dépendances avec un visiteur à partir d'un point d'entrée (script.module).
 
+TODO :
+L’appel suivant : 
+   Microsoft.PowerShell.Utility\Get-Member
+
+Peut être considéré, s’il n’ y a pas d’appel précédent à IPMO Microsoft.PowerShell.Utility, comme de l’autoloading du module. On DOIT donc l’ajouter dans la liste des dépendances de module.
+La création d’une dépendance de module peut  être explicite ou implicite (pour le contexte). Ajout d’un champ pour le type de dépendances ?
+
+Dans la liste des dépendances de différentes types on doit filtrer en fin le résultat sur l’unicité.
+Tout en gardant la liste complète car on veut aussi connaitre quelle fonction appel quel module.
+
+Todo
+Où se trouve la dépendance ? dans le Script.Function 
+
+
+using-the-ast-to-find-module-dependencies-in-powershell-functions-and-scripts
+Recense les fonctions, puis les commandes appelées dans chaque fonction et détermine le nom du module de la command et l’associe à une fonction.
+
+La liste des commandes d’une fonction est aussi la liste des modules utilisés, s’ils sont dans le path ( comportement de get-command).
+On peut donc ajouter un lien vers un module ( Function -> call Cmd -> contenu dans Module. +Exactement Module X définie la commande C.
+
+Pour les modules recensé qui ne sont pas en mémoire on peut les charger si l’autoloading est désactivé.
+L’analyse des dépendances de module doit donc se faire en premier MAIS  si on a un seul visiteur il faut les charger (les analyser ?) au fur et à mesure. ?
+
 
 USAGE :
 compréhension du code (soit un folder , soit une liste)
