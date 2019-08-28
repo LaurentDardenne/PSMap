@@ -35,6 +35,9 @@ $Params=@{
 }
 &$InitializeLogging @Params
 
+
+New-Variable -Name PSModuleInfoToModuleSpecification -Value ( ([ordered]@{'ModuleName' ='Name';'ModuleVersion' = 'Version';'Guid' = 'Guid'}).AsReadOnly() ) -Option Constant -Scope Script
+
 #todo doit pointer sur le contexte de l'appelant
 $sbIsScriptDotSource={ ($_ -is [PSCustomObject]) -and ($_.PsTypenames[0] -eq 'InformationScript') }
 
@@ -228,7 +231,7 @@ Function Get-StaticParameterBinder{
   }
 }
 
-function ConvertTo-Hashtable {
+function ConvertFrom-KeyValuePairs {
   param($KeyValuePairs)
   
   $H=@{}
@@ -240,9 +243,66 @@ function ConvertTo-Hashtable {
      $Value= ($_.Item2.toString()) -Replace $RegEx,'$2'
      $H.Add($Key,$Value)
    }
-   return ,$H
+   Write-Output -NoEnumerate $H
 }
 
+Function ConvertTo-HashTable{
+  #Convert object properties to a hashtable
+  #todo
+  # 
+  
+  # $c=get-command  Microsoft.PowerShell.Utility\Get-Member
+  # ConvertTo-HashTable -InputObject $c.Module -Association $PSModuleInfoToModuleSpecification
+
+     [cmdletbinding(DefaultParameterSetName='Properties')]
+      param( 
+           #The object containing the properties
+          [ValidateNotNull()]
+          $InputObject,
+          
+           #The properties list
+          [Parameter(ParameterSetName='Properties')]
+          [ValidateNotNullOrEmpty()]
+          [string[]] $Properties,
+  
+           #Hashtable containing in each key the name of a property of the resulting hashtable and
+           #in each value the name of a property of the object pointing to the value to be associated.
+          [Parameter(ParameterSetName='Joint')]
+          [ValidateNotNull()]
+          $Association,
+  
+           #Activate 'Set-StrictMode -Version 2.0'
+          [switch] $Strict
+      )
+     try {
+       #can throw System.Management.Automation.PropertyNotFoundException
+      if ($Strict)
+      { Set-StrictMode -Version 2.0}
+      $Hashtable=@{}
+      if ($PSCmdlet.ParameterSetName -eq 'Properties')
+      {
+         foreach ($Property in $Properties)
+         { $Hashtable.Add($Property,$InputObject.$Property) }
+      }
+      else
+      {
+          foreach ($Property in $Association.GetEnumerator())
+          { 
+            $Key=$Property.Key
+            $ObjectProperty=$Property.Value
+            $Hashtable.Add($Key,$InputObject.$ObjectProperty) 
+          }
+      }
+     Write-Output -NoEnumerate $Hashtable
+    } finally {
+      if ($Strict)
+      { 
+          #Set-StrictMode has a local scope, it remains the case of the dotsource.
+          Set-StrictMode -Off 
+      }
+    }
+  }
+  
 function Get-UsingStatementParameter{
 #The referenced file must exist when the AST is build
 #
@@ -268,7 +328,7 @@ function Get-UsingStatementParameter{
                     if ($null -ne $UsingStatement.ModuleSpecification) 
                     { 
                        Write-Debug "`t ModuleSpecification '$($UsingStatement.ModuleSpecification.KeyValuePairs|out-string)'"
-                       $HashTable=ConvertTo-Hashtable $UsingStatement.ModuleSpecification.KeyValuePairs
+                       $HashTable=ConvertFrom-KeyValuePairs $UsingStatement.ModuleSpecification.KeyValuePairs
                        [Microsoft.PowerShell.Commands.ModuleSpecification]::New($HashTable) 
                     }
                     elseif ( ($null -eq $UsingStatement.Alias) -and ($null -ne $UsingStatement.Name) )
@@ -332,14 +392,14 @@ function Get-InformationModule{
                                     if( $Null -ne $StaticParameters.FullyQualifiedName)
                                     { 
                                        Write-Debug "`t ModuleSpecification '$($StaticParameters.FullyQualifiedName.KeyValuePairs|Out-String)'"
-                                       $HashTable=ConvertTo-Hashtable $StaticParameters.FullyQualifiedName.KeyValuePairs
+                                       $HashTable=ConvertFrom-KeyValuePairs $StaticParameters.FullyQualifiedName.KeyValuePairs
                                        [Microsoft.PowerShell.Commands.ModuleSpecification]::New($HashTable) 
                                     }
                               }                                        
 
         'HashtableAst'      {
                                 Write-Debug "`t ModuleSpecification '$($CommandElement.KeyValuePairs|Out-String)'"
-                                $HashTable=ConvertTo-Hashtable $CommandElement.KeyValuePairs
+                                $HashTable=ConvertFrom-KeyValuePairs $CommandElement.KeyValuePairs
                                 [Microsoft.PowerShell.Commands.ModuleSpecification]::New($HashTable) 
                             }
 
@@ -505,11 +565,12 @@ function ConvertTo-AssemblyDependency {
                   catch
                   {
                       #todo error or flag into type ‘NamespaceDependency' ?
+                      #todo si c'est un flag alors la gestion d'erreur doit être dans  New-NamespaceDependency
                       Write-Warning "DLL analyze impossible for : $Value"
                   }
               }
               else
-              { New-DLLDependency $Current.Arguments[0].value }
+              { New-DLLDependency $Current.Arguments[0].Value }
           }
           else
           {
@@ -522,7 +583,7 @@ function ConvertTo-AssemblyDependency {
   }
   else
   {
-    #todo add log not an error
+    #todo add a 'Warning' log not an error
     Write-Error "Foreach Expressions : unknown case : '$($Current)'"
     Continue 
   }
@@ -535,8 +596,13 @@ function ConvertTo-CommandDependency {
   )
 
   $CommandName=$Command.GetCommandName()
-  # todo peut renvoyer une string contenant 'ModuleName\Cmd' -> Microsoft.PowerShell.Utility\Get-Member
-  # une fonction peut avoir ce nom : function Microsoft.PowerShell.Utility\Get-Member{}
+  # Todo Module-Qualified Cmdlet Names. 
+  # Peut contenir  une string contenant 'ModuleName\Cmd' -> Microsoft.PowerShell.Utility\Get-Member
+  # Si la commande existe  via Get-Command on crée un modulespecification avec les infos $command.Module
+  # sinon on crée un module avec le nom seul ( split ‘\’)
+
+  # Note: une fonction peut avoir ce nom : function Microsoft.PowerShell.Utility\Get-Member{}
+
   if ($null -ne $CommandName)
   {
       if ($CommandName -match 'Update-FormatData|Update-TypeData')
