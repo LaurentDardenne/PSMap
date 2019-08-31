@@ -73,12 +73,18 @@ Set-Location  $Path
 
 #$file='..\Test\SourceCode\Imbrication1.ps1'
 $file='..\Test\SourceCode\CallMainFunctionInsideNestedFunction.ps1' #todo regrouper les cas dans un seul script
-
 $File='..\Test\SourceCode\CommandsDependencies.ps1'
+$file='G:\PS\PSMap\Test\SourceCode\Parent-Child.ps1'
 
+#todo rechercher dans les ancêtres la présence de la commande ( on considére la dernière déclaration de la fonction)
+# on  recherche dans le parent les fonctions sans récurse.On s'arrête au F° déclarées dans le Main, 
+#  car on ne peut appeler une fonction imbriqué dans une autre fonction.
+# oui -> on remplace le vertex avec le parent
+# non -> inconnue dans le contexte ou déclarer plus avant dans la code ( dynamique)
 
 #Add a Main function to contains orphans edge/vertex
 #The ast implicitly erases the notion of container represented by the script / module
+#Needed when we use 'graph node' instead 'neested blocks'
 $text= Get-Content $file -Encoding utf8 -raw
 @"
  function Main {
@@ -87,7 +93,7 @@ $text= Get-Content $file -Encoding utf8 -raw
 "@ > c:\temp\PSMmapTest.ps1
 
 $CodeMap=Get-CodeMap -Path c:\temp\PSMmapTest.ps1 
-#$CodeMap=Get-CodeMap -Path $File
+$CodeMap=Get-CodeMap -Path $File
 
 New-DependenciesReport  $CodeMap |
  Export-Document -Path $env:Temp -Format Html -Verbose
@@ -137,7 +143,7 @@ $g=Group-FunctionGraph $FunctionGraph
 $g[0].group|Select-Object Name,@{n='Define';e={$_.FunctionDefined.Name}}
 $g[1].group|Select-Object Name,@{n='Call';e={$_.CalledCommand.Name}}
 
-#todo use case : Ajout test de redéfintion de function dans la même portée.
+#todo use case : Ajout test de redéfinition de function dans la même portée.
 
 #$Vertices= $CodeMap.Digraph.GetVertices() |% {$_}
 #$Neighbors=$CodeMap.Digraph.GetNeighbors($Vertices[0])|% {$_}
@@ -151,7 +157,7 @@ $g[1].group|Select-Object Name,@{n='Call';e={$_.CalledCommand.Name}}
 
 
 #imbrication plutot que des liens ( sous-graph)
-# si une entrée, un vertex, définie un voisin de type fonction, alors le nom de l'entrée est un groupe ( sous-graph)
+# si une entrée, un vertex, définie une fonction (un voisin), alors le nom de l'entrée est un groupe ( sous-graph)
 # todo  appels interne qui ne sont pas des fonctions, les liens externes connue comme tel script,module,dll et ressources fichier, 
 #       sont placés dans le groupe et peuvent avoir un formalisme dédié (icone /et/ou couleur. DGML.Categories ?)
 #       on aura donc 2 entrées, une pour porter la notion d'imbrication l'autre pour l'appel dans la fonction parente.
@@ -162,6 +168,7 @@ $Graph= New-DgmlGraph -Title 'Test'
 $Nodes= New-DgmlNodeList
 $Links= New-DgmlLinkList 
 
+#TODO les liens vers l'extérieur des F° imbriquées est à revoir, car à ce jour le lien est placé sur le 'Main'.
 foreach ($current in $codemap.DiGraph.GetVertices())
 {
   $Label=Get-Child -Name $Current.Name
