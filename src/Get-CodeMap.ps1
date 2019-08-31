@@ -79,8 +79,8 @@ $file='G:\PS\PSMap\Test\SourceCode\Parent-Child.ps1'
 #todo rechercher dans les ancêtres la présence de la commande ( on considére la dernière déclaration de la fonction)
 # on  recherche dans le parent les fonctions sans récurse.On s'arrête au F° déclarées dans le Main, 
 #  car on ne peut appeler une fonction imbriqué dans une autre fonction.
-# oui -> on remplace le vertex avec le parent
-# non -> inconnue dans le contexte ou déclarer plus avant dans la code ( dynamique)
+# oui -> on ajoute un lien (edge) sur le vertex trouvé
+# non -> inconnue dans le contexte ou déclarée plus avant dans la code ( dynamique)
 
 #Add a Main function to contains orphans edge/vertex
 #The ast implicitly erases the notion of container represented by the script / module
