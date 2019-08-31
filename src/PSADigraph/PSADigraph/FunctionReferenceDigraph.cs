@@ -261,7 +261,46 @@ namespace PSADigraph
     /// </summary>
     public class Vertex
     {
+        /// <summary>
+        /// Contains the full name of a function or a command
+        /// </summary>
         public string Name { get { return name; } }
+
+
+        //todo gérer un tableau de string dans BuildNameFromParents puis construire/rechercher les noms dans le tableau
+        // name = String.Join(".", Names);
+        // Parts.Take(index).ToArray()
+        // si on duplique 5 F° imbriqués * 25 chars (125,100, 85) =300 
+        // si on estime 40 F° par container : 300 *40=12Ko 
+        // si on estime 50 container : 50 *12Ko =600000
+        //entre 500Ko et 1 Mo
+
+        // todo si calculé autant pointer sur l'ast.
+        /// <summary>
+        ///Label is the AST command name, a short name.
+        /// </summary>
+        public string Label { get { return name.Split('.').Last(); } }
+
+        // todo si calculé autant pointer sur l'ast.
+        /// <summary>
+        /// Parent is the name of the container (function/script/module)
+        /// </summary>
+        public string Parent
+        {
+            get
+            {
+                string[] parts = name.Split('.');
+                int Pos = parts.Length;
+                if (Pos >= 2)
+                {  Pos = Pos - 1; }
+                else
+                { Pos = 1; }
+                List<string> parents= parts.Take(Pos).ToList();
+                return String.Join(".", parents);
+            }
+        }
+
+        
         public Ast Ast
         {
             get
@@ -285,11 +324,7 @@ namespace PSADigraph
             name = String.Empty;
         }
 
-        //todo add parent & label
-        // name est le nom complet
-        // parent est un nom complet à partir du nom complet
-        //le label et le nom de la commande AST
-        public Vertex(string name, Ast ast)
+          public Vertex(string name, Ast ast)
         {
             if (name == null)
             {
@@ -364,7 +399,6 @@ namespace PSADigraph
         /// <returns>The call stack object of the functions found bye the AST visitor</returns>
         private string BuildNameFromParents(Stack<Vertex> Stack)
         {
-            //todo prendre la dernière partie du nom : Main.Parent.Child -> Child
             List<string> Names = Stack.Select(vertex => vertex.Name.Split('.').Last()).ToList();
             Names.Reverse();
             return String.Join(".", Names);
