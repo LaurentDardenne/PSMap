@@ -2,14 +2,18 @@
 # [System.ComponentModel.DataAnnotations.KeyAttribute]
 #todo 'identité composite',Unicité ?
 #                             Module Name Or Module,Version,Guid
-#                             ModulePath\V1\Name; ModulePath\V2\Name
-#connaitre le parent
+#                             ModulePath\V1\Name
+#                             note: on ne gére pas le side by side, mais on doit connaitre 
+#                                   le n° de version du module
+#
 #info de définition de l'objet AST (powershell)
 #info de relation de l'objet  (Graph)
 #info de relative au type d'objet  (Rapport)
 #Information de gestion (error, type d'appel)
-#ex : pour un module $StaticParameters.Name la classe [Microsoft.PowerShell.Commands.ModuleSpecification]
+#ex : todo Moi pas comprendre !!
+#     pour un module $StaticParameters.Name la classe [Microsoft.PowerShell.Commands.ModuleSpecification]
 #     ne contient -AsCustomObject qui permet de déterminer si on visualise les fonctions du module importés
+#
 #     Pour Using le module peut ne pas exister, on ne peut donc avoir plus d'info sur l'objet
 #     Idem pour une analyse  de DLL impossible 
 #     Certain appels peuvent ne pas être résolus
@@ -17,12 +21,18 @@
 #recherche des fichiers :
 # supposer que les chemins relatifs le sont par rapport au script principal peut ne pas fonctionner
 # rechercher ces dépendances dans une liste des fichiers établie avant l'analyse
-#on peut donc avoir des dépendances incomplètes, mais on peut savoir lequelles.
+# on peut donc avoir des dépendances incomplètes, mais on peut savoir lequelles.
 
 #DOC:
 # Le contexte d'exécution  influence le résultat.
 #   Par exemple sur Windows 10    :  gcm get-aduser -> erreur
 #   mais sur un serveur configuré :   gcm get-aduser -> OK autoloading de module si RSAT installé.
+
+#todo
+# Vérifier si les dépendances de module connues sont accessibles, i.e. si les modules peuvent répondre à une demande Get-Command 
+# Gcm recherche dans le psModulepath et path pour les appli mais pas les functions dans des scripts.
+
+# Note: Pour les fonctions il est recommandé de les déclarer avant de les appeler.
 
 $Script:lg4n_ModuleName=$MyInvocation.MyCommand.ScriptBlock.Module.Name
 
