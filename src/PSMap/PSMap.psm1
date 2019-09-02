@@ -55,6 +55,8 @@ function Get-CodeMap {
 
     $Container=New-Container -Path (Convert-Path $Path) -Type Script
     $AstParsing=Get-Ast -FilePath $Container.FileInfo.FullName
+    #Note :  La recherche des dépendances doit se faire en premier, car la résolution de la localisation des liens inconnus
+    #        doit rechercher dans les dépendances connues/déclarées
     $Dependencies= Read-Dependency -Container $Container -Ast $AstParsing.Ast
 
 
