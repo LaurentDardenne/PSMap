@@ -80,7 +80,19 @@ $file='G:\PS\PSMap\Test\SourceCode\Parent-Child.ps1'
 # on  recherche dans le parent les fonctions sans récurse.On s'arrête au F° déclarées dans le Main, 
 #  car on ne peut appeler une fonction imbriqué dans une autre fonction.
 # oui -> on ajoute un lien (edge) sur le vertex trouvé
-# non -> inconnue dans le contexte ou déclarée plus avant dans la code ( dynamique)
+# non -> inconnue dans le contexte ou déclarée plus avant dans le code ( dynamique)
+
+#si FQDN -> Module\Name -> fin
+#sinon déclarée dans les ancêtres ( F° Imbriqué )
+#            oui prend le nom complet et ajoute un edge
+#            sinon déclarée dans la fonction du contener ( pas de recurse)
+#              oui prend le nom complet et ajoute un edge
+#              non (inconnue dans les déclarations du contener)
+#                  recherche via Get-Command (uniquement les modules dans $env:PSModulePath et $env:Path pour les applications)
+#                  oui  Module\Name -> fin
+#                  non  recherche dans les dépendances déclarées en amont de l'usage ....     
+#                        oui   Dependance.Name -> fin
+#                        Non inconnue dans le contexte( contener et dépendances). 
 
 #Add a Main function to contains orphans edge/vertex
 #The ast implicitly erases the notion of container represented by the script / module
